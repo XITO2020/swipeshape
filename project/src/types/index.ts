@@ -38,6 +38,8 @@ export interface Comment {
   rating: number;
   created_at: string;
   avatar_url?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  updated_at?: string;
 }
 
 export interface Newsletter {

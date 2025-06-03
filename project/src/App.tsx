@@ -51,7 +51,6 @@ const App: React.FC = () => {
               <Route path="/programs" element={<ProgramsPage />} />
               <Route path="/programs/:id" element={<ProgramDetailPage />} />
               <Route path="/admin/newsletter" element={<AdminNewsletterPage />} />
-              <Route path="/admin/articles" element={<AdminArticlesPage />} />
               
               {/* Protected Routes */}
               <Route

@@ -79,13 +79,16 @@ const CommentSection: React.FC = () => {
     setError(null);
     
     try {
-      const { error } = await createComment({
+      const commentData = {
         user_id: user.id,
-        user_email: user.email,
+        user_email: user.email, // Ensure this is user.email as per existing code
         content,
         rating,
-        avatar_url: avatarUrl
-      });
+        avatar_url: avatarUrl,
+        status: 'pending' as 'pending' | 'approved' | 'rejected' // Add this line
+      };
+
+      const { error } = await createComment(commentData);
       
       if (error) {
         throw error;

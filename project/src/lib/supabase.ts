@@ -255,6 +255,7 @@ export const getComments = async () => {
   const { data, error } = await supabase
     .from('comments')
     .select('*')
+    .eq('status', 'approved') // Add this condition
     .order('created_at', { ascending: false });
   
   // Convert IPFS CIDs to gateway URLs for avatars
@@ -269,12 +270,50 @@ export const getComments = async () => {
   return { data, error };
 };
 
-export const createComment = async (comment: Omit<Comment, 'id' | 'created_at'>) => {
+export const createComment = async (comment: Omit<Comment, 'id' | 'created_at' | 'updated_at'>) => {
+  const commentToInsert = {
+    ...comment,
+    status: 'pending' as const, // Ensure status is 'pending'
+  };
   const { data, error } = await supabase
     .from('comments')
-    .insert([comment])
+    .insert([commentToInsert])
     .select();
   return { data, error };
+};
+
+export const getAllCommentsAdmin = async () => {
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (data) {
+    data.forEach(comment => {
+      if (comment.avatar_url) {
+        comment.avatar_url = cidToUrl(comment.avatar_url);
+      }
+    });
+  }
+
+  return { data, error };
+};
+
+export const updateCommentStatus = async (commentId: number, status: 'pending' | 'approved' | 'rejected') => {
+  const { data, error } = await supabase
+    .from('comments')
+    .update({ status: status, updated_at: new Date().toISOString() })
+    .eq('id', commentId)
+    .select();
+  return { data, error };
+};
+
+export const deleteCommentAdmin = async (commentId: number) => {
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', commentId);
+  return { error };
 };
 
 // Purchases functions
