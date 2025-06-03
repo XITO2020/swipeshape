@@ -51,3 +51,15 @@ export interface PurchaseHistory {
   purchaseDate: string;
   status: 'completed' | 'refunded';
 }
+
+export interface Video {
+  id: number;
+  title: string;
+  description?: string;
+  video_url: string;
+  thumbnail_url?: string;
+  duration_seconds?: number;
+  created_at: string; // Or Date
+  updated_at: string; // Or Date
+  published_at?: string; // Or Date
+}

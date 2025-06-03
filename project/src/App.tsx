@@ -19,6 +19,8 @@ import ThankYouPage from './pages/ThankYouPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminNewsletterPage from './pages/AdminNewsletterPage';
 import AdminArticlesPage from './pages/AdminArticlesPage';
+import AdminVideosPage from './pages/AdminVideosPage';
+import AdminCommentsPage from './pages/AdminCommentsPage'; // Add this
 import EventsPage from './pages/EventsPage';
 import ContactPage from './pages/ContactPage';
 
@@ -52,6 +54,8 @@ const App: React.FC = () => {
               <Route path="/programs/:id" element={<ProgramDetailPage />} />
               <Route path="/admin/newsletter" element={<AdminNewsletterPage />} />
               <Route path="/admin/articles" element={<AdminArticlesPage />} />
+              <Route path="/admin/videos" element={<AdminVideosPage />} />
+              <Route path="/admin/comments" element={<AdminCommentsPage />} /> {/* Add this line */}
               
               {/* Protected Routes */}
               <Route

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Dumbbell, ShoppingBag, FileText, Calendar, Mail, Home, MessageCircleQuestion } from 'lucide-react';
+import { Dumbbell, ShoppingBag, FileText, Calendar, Mail, Home, MessageCircleQuestion, Video, MessagesSquare } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 
 type BackgroundKey = 'home' | 'shop' | 'blog' | 'programs' | 'events' | 'contact' | 'faq';
@@ -150,15 +150,37 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
               </li>
 
               {isAdmin && (
-                <li>
-                  <Link
-                    to="/admin"
-                    className="flex items-center space-x-3 px-4 py-2 mt-8 text-white bg-pink-600 hover:bg-pink-700 rounded-lg transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <span>Sister's Admin</span>
-                  </Link>
-                </li>
+                <>
+                  <li>
+                    <Link
+                      to="/admin"
+                      className="flex items-center space-x-3 px-4 py-2 mt-8 text-white bg-pink-600 hover:bg-pink-700 rounded-lg transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <span>Sister's Admin</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin/videos"
+                      className="flex items-center space-x-3 px-4 py-2 text-stone-800 hover:text-pink-50 hover:bg-white/20 rounded-lg transition-all duration-200"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <Video size={20} />
+                      <span>Manage Videos</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin/comments"
+                      className="flex items-center space-x-3 px-4 py-2 text-stone-800 hover:text-pink-50 hover:bg-white/20 rounded-lg transition-all duration-200"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <MessagesSquare size={20} />
+                      <span>Manage Comments</span>
+                    </Link>
+                  </li>
+                </>
               )}
             </ul>
           </div>
