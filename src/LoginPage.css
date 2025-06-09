@@ -1,0 +1,49 @@
+/* LoginPage.css */
+
+/* Conteneur de l'animation */
+.animated-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+  }
+  
+  /* Lignes animées */
+  .animated-background span {
+    position: absolute;
+    display: block;
+    width: 10px;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0) 100%);
+    animation: move-lines 3s linear infinite;
+  }
+  
+  /* Animation des lignes */
+  @keyframes move-lines {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+  
+  /* Position des lignes */
+  .animated-background span:nth-child(1) {
+    left: 25%;
+    animation-duration: 3.1s;
+  }
+  
+  .animated-background span:nth-child(2) {
+    left: 50%;
+    animation-duration: 2.9s;
+  }
+  
+  .animated-background span:nth-child(3) {
+    left: 75%;
+    animation-duration: 3.2s;
+  }
+  

@@ -1,0 +1,55 @@
+.thumbnail {
+  text-align: center;
+  padding: 1rem;
+}
+
+.thumbnailImage {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.thumbnailTitle {
+  font-size: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.thumbnailSummary {
+  font-size: 1rem;
+  color: #555;
+  margin-bottom: 1rem;
+}
+
+.thumbnailLink {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background-color: #F9AAB6;
+  color: white;
+  text-decoration: none;
+  border-radius: 24px;
+  transition: background-color, color, 0.6s;
+}
+
+.thumbnailLink:hover {
+  background-color: rgb(249, 247, 110);
+  color: #9b899b;
+}
+
+/* Styles pour le slider - create a slider wrapper class */
+.sliderWrapper {
+  /* Empty class to serve as a local hook */
+  width: 100%;
+}
+
+/* Apply global styles to the slider */
+.sliderWrapper :global(.slick-dots) {
+  bottom: 10px;
+}
+
+.sliderWrapper :global(.slick-dots li button:before) {
+  color: #9b899b;
+}
+
+.sliderWrapper :global(.slick-dots li.slick-active button:before) {
+  color: #F472B6;
+}
