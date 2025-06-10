@@ -1,8 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
-import { Program } from '../types';
-import { useAppStore } from '../lib/store';
+import { Program } from '@/types';
+import { useAppStore } from '@/lib/store';
 
 interface ProgramCardProps {
   program: Program;

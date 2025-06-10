@@ -1,15 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { executeQuery } from '../db';
-import formData from 'form-data';
-import Mailgun from 'mailgun.js';
-import Client from 'mailgun.js/client';
-
-// Initialiser Mailgun
-const mailgun = new Mailgun(formData);
-const mg = mailgun.client({
-  username: 'api',
-  key: process.env.MAILGUN_API_KEY || ''
-});
+// Utilisation de require pour Brevo comme indiqué dans la documentation officielle
+// Cela évite les problèmes de typage avec TypeScript
+const brevo = require('@getbrevo/brevo');
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // CORS
@@ -32,6 +25,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Après l'enregistrement réussi, envoyez un email de bienvenue
     try {
+      // Vérifier que les variables d'environnement sont définies
+      if (!process.env.BREVO_API_KEY || !process.env.BREVO_FROM_EMAIL) {
+        console.warn('Configuration Brevo incomplète. L\'email de bienvenue ne sera pas envoyé.');
+        console.warn('Pour configurer Brevo, ajoutez BREVO_API_KEY et BREVO_FROM_EMAIL dans votre .env.local');
+        return; // Sortir de la fonction d'envoi d'email sans erreur
+      }
+
       // Contenu HTML de l'email de bienvenue
       const welcomeEmailContent = `
         <html>
@@ -61,31 +61,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 <li>Et bien plus encore!</li>
               </ul>
               <p style="text-align: center; margin-top: 30px;">
-                <a href="${process.env.NEXT_PUBLIC_SITE_URL}/login" class="btn">Se connecter</a>
+                <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/login" class="btn">Se connecter</a>
               </p>
             </div>
             <div class="footer">
               <p>&copy; ${new Date().getFullYear()} SwipeShape, Tous droits réservés.</p>
-              <p>Pour vous désabonner de nos mails, <a href="${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(email)}">cliquez ici</a></p>
+              <p>Pour vous désabonner de nos mails, <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/unsubscribe?email=${encodeURIComponent(email)}">cliquez ici</a></p>
             </div>
           </div>
         </body>
         </html>
       `;
       
-      const emailData = {
-        from: `SwipeShape <noreply@${process.env.MAILGUN_DOMAIN}>`,
-        to: email,
-        subject: 'Bienvenue sur SwipeShape',
-        html: welcomeEmailContent
-      };
-
-      await mg.messages.create(process.env.MAILGUN_DOMAIN || '', emailData);
+      // Configuration de l'API Brevo selon la doc officielle
+      let apiInstance = new brevo.TransactionalEmailsApi();
+      
+      // Configuration de l'authentification selon la doc officielle
+      let apiKey = apiInstance.authentications['apiKey'];
+      apiKey.apiKey = process.env.BREVO_API_KEY || '';
+      
+      // Création de l'email avec Brevo
+      let sendSmtpEmail = new brevo.SendSmtpEmail();
+      sendSmtpEmail.subject = 'Bienvenue sur SwipeShape';
+      sendSmtpEmail.htmlContent = welcomeEmailContent;
+      sendSmtpEmail.sender = { name: 'SwipeShape', email: process.env.BREVO_FROM_EMAIL || 'no-reply@swipeshape.com' };
+      sendSmtpEmail.to = [{ email: email, name: `${firstName} ${lastName}` }];
+      
+      console.log(`Tentative d'envoi d'email via Brevo (email expéditeur: ${process.env.BREVO_FROM_EMAIL})`);
+      await apiInstance.sendTransacEmail(sendSmtpEmail);
       console.log('Email de bienvenue envoyé avec succès à:', email);
       
-    } catch (emailError) {
+    } catch (emailError: any) {
       // Ne pas bloquer l'enregistrement en cas d'erreur d'envoi d'email
       console.error('Erreur lors de l\'envoi de l\'email de bienvenue:', emailError);
+      
+      // Instructions de débogage pour les erreurs courantes
+      if (emailError.status === 401 || emailError.response?.status === 401 || emailError.code === 'Unauthorized') {
+        console.error('Erreur d\'authentification Brevo (401 Unauthorized). Vérifiez votre BREVO_API_KEY.');
+        console.error('Pour configurer Brevo correctement:');
+        console.error('1. Connectez-vous à votre compte Brevo (brevo.com)');
+        console.error('2. Allez dans "SMTP & API" et récupérez votre clé API v3');
+        console.error('3. Ajoutez cette clé dans votre fichier .env.local sous BREVO_API_KEY');
+        console.error('4. Configurez également BREVO_FROM_EMAIL avec une adresse email valide');
+      } else if (emailError.response?.status === 400 || emailError.code === 'Bad Request') {
+        console.error('Erreur avec les données d\'email (400). Vérifiez que BREVO_FROM_EMAIL est une adresse email valide.');
+      } else {
+        console.error('Détails de l\'erreur Brevo:', JSON.stringify(emailError, null, 2));
+      }
     }
 
     return res.status(200).json({ success: true });

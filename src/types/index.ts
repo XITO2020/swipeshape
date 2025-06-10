@@ -24,6 +24,14 @@ export interface Program {
   created_at: string;
 }
 
+/**
+ * Interface pour les réponses API standard
+ */
+export interface ApiResponse<T = any> {
+  data: T | null;
+  error: any | null;
+}
+
 export interface Article {
   id: number;
   title: string;
@@ -43,7 +51,8 @@ export interface Comment {
   articleId?: number;
   authorId?: string;
   user_id?: string;
-  user_email?: string;
+  user_email: string; // Making this required as it's used in the component
+  avatar_url?: string; // Added at root level for Supabase data structure
   author?: {
     id: string;
     name?: string;
@@ -51,7 +60,7 @@ export interface Comment {
     avatar_url?: string;
   };
   content: string;
-  rating?: number;
+  rating: number; // Making this required as it's used for star rendering
   // Support both naming conventions
   created_at: string;
   createdAt?: string;

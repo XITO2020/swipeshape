@@ -1,25 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAppStore } from './store';
 import { NextComponentType, NextPageContext } from 'next';
 
 // HOC pour protéger les routes nécessitant une authentification
-export const withAuth = (Component: NextComponentType) => {
-  const AuthenticatedComponent = (props: any) => {
-    const { isAuthenticated, isInitialized } = useAppStore();
+export const withAuth = <P extends object>(Component: React.ComponentType<P>) => {
+  const AuthenticatedComponent = (props: P) => {
+    const { isAuthenticated } = useAppStore();
     const router = useRouter();
-
+    const [checkingAuth, setCheckingAuth] = useState(true);
+    
     useEffect(() => {
-      // Attendre l'initialisation du state d'authentification
-      if (isInitialized) {
-        if (!isAuthenticated) {
-          router.push(`/login?callbackUrl=${encodeURIComponent(router.asPath)}`);
-        }
+      // Simple auth check without isInitialized
+      if (!isAuthenticated && router.isReady) {
+        router.push(`/login?callbackUrl=${encodeURIComponent(router.asPath)}`);
       }
-    }, [isAuthenticated, isInitialized, router]);
+      setCheckingAuth(false);
+    }, [isAuthenticated, router]);
 
-    // Afficher un loading state pendant la vérification
-    if (!isInitialized) {
+    // Show loading state during authentication check
+    if (checkingAuth) {
       return <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-600"></div>
       </div>;
@@ -33,24 +33,21 @@ export const withAuth = (Component: NextComponentType) => {
 };
 
 // HOC pour protéger les routes réservées aux administrateurs
-export const withAdmin = (Component: NextComponentType) => {
-  const AdminComponent = (props: any) => {
-    const { isAuthenticated, isAdmin, isInitialized } = useAppStore();
+export const withAdmin = <P extends object>(Component: React.ComponentType<P>) => {
+  const AdminComponent = (props: P) => {
+    const { isAuthenticated, isAdmin } = useAppStore();
     const router = useRouter();
+    const [checkingAuth, setCheckingAuth] = useState(true);
 
     useEffect(() => {
-      // Attendre l'initialisation du state d'authentification
-      if (isInitialized) {
-        if (!isAuthenticated) {
-          router.push(`/login?callbackUrl=${encodeURIComponent(router.asPath)}`);
-        } else if (!isAdmin) {
-          router.push('/'); // Rediriger vers la page d'accueil si l'utilisateur n'est pas admin
-        }
+      // Check admin privileges
+      if (router.isReady && (!isAuthenticated || !isAdmin)) {
+        router.push('/login');
       }
-    }, [isAuthenticated, isAdmin, isInitialized, router]);
+      setCheckingAuth(false);
+    }, [isAuthenticated, isAdmin, router]);
 
-    // Afficher un loading state pendant la vérification
-    if (!isInitialized) {
+    if (checkingAuth) {
       return <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-600"></div>
       </div>;
@@ -64,20 +61,26 @@ export const withAdmin = (Component: NextComponentType) => {
 };
 
 // HOC pour les routes publiques (redirection si déjà authentifié)
-export const withPublic = (Component: NextComponentType) => {
-  const PublicComponent = (props: any) => {
-    const { isAuthenticated, isInitialized } = useAppStore();
+export const withPublic = <P extends object>(Component: React.ComponentType<P>) => {
+  const PublicComponent = (props: P) => {
+    const { isAuthenticated } = useAppStore();
     const router = useRouter();
-    
+    const [checkingAuth, setCheckingAuth] = useState(true);
+
     useEffect(() => {
-      if (isInitialized && isAuthenticated) {
-        // Si l'utilisateur est déjà connecté, rediriger vers la page d'accueil
+      if (router.isReady && isAuthenticated) {
         router.push('/');
       }
-    }, [isAuthenticated, isInitialized, router]);
+      setCheckingAuth(false);
+    }, [isAuthenticated, router]);
 
+    if (checkingAuth) {
+      return <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-600"></div>
+      </div>;
+    }
     // Ne rendre le composant que si l'utilisateur n'est pas authentifié
-    return (!isAuthenticated || !isInitialized) ? <Component {...props} /> : null;
+    return !isAuthenticated ? <Component {...props} /> : null;
   };
 
   return PublicComponent;

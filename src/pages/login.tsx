@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { signIn } from '../lib/supabase';
@@ -12,7 +12,7 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { callbackUrl } = router.query;
-  const { setUser, setIsAuthenticated, setIsAdmin } = useAppStore();
+  const { setUser, setAuthState } = useAppStore();
 
   // Get redirect path from query params
   const redirectTo = callbackUrl ? (Array.isArray(callbackUrl) ? callbackUrl[0] : callbackUrl) : '/';
@@ -29,6 +29,7 @@ const LoginPage: React.FC = () => {
     setError(null);
 
     try {
+      // Utilisation de notre nouvelle API route pour éviter CORS
       const { data, error } = await signIn(email, password);
 
       if (error) {
@@ -41,10 +42,7 @@ const LoginPage: React.FC = () => {
           email: data.user.email || '',
           created_at: data.user.created_at || new Date().toISOString()
         });
-        setIsAuthenticated(true);
-
-        // Check if user is admin (in a real app, you'd check roles from Supabase)
-        setIsAdmin(email.includes('admin'));
+        setAuthState(true, email.includes('admin')); // isAdmin si l'email contient 'admin'
 
         router.push(redirectTo);
       }
@@ -62,43 +60,43 @@ const LoginPage: React.FC = () => {
         <span></span>
         <span></span>
         <span></span>
-      </div>
-      <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-md">
+      </div>      
+      <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-md z-10">
         <h1 className="text-2xl font-bold text-purple-800 mb-6 text-center">Connectez-vous à Swipe-Shape</h1>
-
+        
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
             {error}
           </div>
         )}
-
+        
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="email" className="block text-gray-700 mb-2">Email</label>
-            <input
-              type="email"
-              id="email"
+            <input 
+              type="email" 
+              id="email" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder="your@email.com"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" 
+              placeholder="votre@email.com"
               required
             />
           </div>
-
+          
           <div className="mb-6">
             <label htmlFor="password" className="block text-gray-700 mb-2">Mot de passe</label>
-            <input
-              type="password"
-              id="password"
+            <input 
+              type="password" 
+              id="password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" 
               placeholder="••••••••"
               required
             />
           </div>
-
+          
           <button 
             type="submit" 
             className={`w-full p-3 rounded-lg font-medium text-white ${
@@ -106,13 +104,13 @@ const LoginPage: React.FC = () => {
             }`}
             disabled={isLoading}
           >
-            {isLoading ? 'Connexion en cours...' : 'Se connecter'}
+            {isLoading ? 'Connexion...' : 'Se connecter'}
           </button>
         </form>
-
+        
         <div className="mt-6 text-center">
           <p className="text-gray-600">
-            Vous n'avez pas de compte ?{' '}
+            Vous n'avez pas de compte ? {' '}
             <Link href="/register" className="text-purple-600 hover:text-purple-800">
               Inscrivez-vous
             </Link>

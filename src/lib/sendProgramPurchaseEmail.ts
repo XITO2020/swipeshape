@@ -1,14 +1,6 @@
-import formData from 'form-data';
-import Mailgun from 'mailgun.js';
-import Client from 'mailgun.js/client';
 import { generatePDF } from './pdfGenerator';
+import { sendEmail, sendEmailWithAttachment } from './brevoClient';
 
-// Initialiser Mailgun
-const mailgun = new Mailgun(formData);
-const mg = mailgun.client({
-  username: 'api',
-  key: process.env.MAILGUN_API_KEY || ''
-});
 
 export async function sendProgramPurchaseEmail(
   email: string, 
@@ -71,26 +63,50 @@ export async function sendProgramPurchaseEmail(
       </html>
     `;
 
-    // Préparer les données de l'email
-    const emailData: any = {
-      from: `SwipeShape <purchase@${process.env.MAILGUN_DOMAIN || 'example.com'}>`,
-      to: email,
-      subject: `Votre achat: ${programName}`,
-      html: purchaseEmailContent
-    };
-
-    // Ajouter la pièce jointe PDF si disponible
-    if (pdfBuffer) {
-      emailData.attachment = {
-        data: pdfBuffer,
-        filename: `recu-${programName.toLowerCase().replace(/\s+/g, '-')}.pdf`
-      };
-    }
-
-    // Envoyer l'email via Mailgun
-    const result = await mg.messages.create(process.env.MAILGUN_DOMAIN || '', emailData);
+    // Créer le contenu texte simple à partir du HTML
+    const textContent = `
+      Merci pour votre achat!
+      
+      Bonjour,
+      
+      Merci d'avoir acheté le programme ${programName}.
+      
+      Vous pouvez télécharger votre programme à l'adresse suivante: ${downloadUrl}
+      
+      Important: Ce lien est valable pendant 7 jours et pour un nombre limité de téléchargements.
+      
+      © ${new Date().getFullYear()} SwipeShape, Tous droits réservés.
+      Pour toute question concernant votre achat, contactez-nous à support@swipeshape.com
+    `;
     
-    console.log('Email d\'achat envoyé avec succès:', result);
+    let result;
+    
+    // Envoyer l'email via Brevo
+    if (pdfBuffer) {
+      // Avec pièce jointe PDF
+      result = await sendEmailWithAttachment(
+        email,
+        `Votre achat: ${programName}`,
+        purchaseEmailContent,
+        textContent,
+        pdfBuffer,
+        `recu-${programName.toLowerCase().replace(/\s+/g, '-')}.pdf`,
+        'SwipeShape',
+        process.env.BREVO_FROM_EMAIL || 'purchase@swipeshape.com'
+      );
+    } else {
+      // Sans pièce jointe
+      result = await sendEmail(
+        email,
+        `Votre achat: ${programName}`,
+        purchaseEmailContent,
+        textContent,
+        'SwipeShape',
+        process.env.BREVO_FROM_EMAIL || 'purchase@swipeshape.com'
+      );
+    }
+    
+    console.log('Email d\'achat envoyé avec succès via Brevo:', result);
     return true;
   } catch (error) {
     console.error('Erreur lors de l\'envoi de l\'email d\'achat:', error);

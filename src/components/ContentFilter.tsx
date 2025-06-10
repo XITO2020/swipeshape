@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
-import DatePicker from 'react-datepicker';
 import { Search, Calendar } from 'lucide-react';
-import 'react-datepicker/dist/react-datepicker.css';
-import { fr } from 'date-fns/locale';
 
 interface ContentFilterProps {
   onSearch: (query: string) => void;
@@ -15,42 +12,71 @@ const ContentFilter: React.FC<ContentFilterProps> = ({
   onDateChange,
   placeholder = 'Rechercher...'
 }) => {
+  // État pour la recherche uniquement
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   
-  // Utiliser un délai avant d'appeler l'API pour éviter les appels excessifs
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setSearchQuery(query);
+  // Gestionnaire simplifié pour la recherche
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
     
-    // Si la recherche est vide, lancez-la immédiatement
-    if (!query.trim()) {
+    // Appliquer la recherche pour champs vides
+    if (!e.target.value.trim()) {
       onSearch('');
-      return;
     }
   };
   
-  // Fonction pour soumettre la recherche manuellement
-  const submitSearch = () => {
+  // Soumission du formulaire
+  const submitSearch = (e?: React.FormEvent) => {
+    e?.preventDefault();
     onSearch(searchQuery);
   };
   
-  // Gérer la soumission avec la touche Entrée
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault(); // Empêcher le comportement par défaut
-      submitSearch();
+  // Gestionnaire simplifié pour la date (sans DatePicker)
+  const handleDateSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    
+    if (value === '') {
+      // Aucun filtre de date
+      onDateChange(null);
+    } else {
+      // Créer une date pour aujourd'hui, hier, semaine dernière, ou mois dernier
+      const now = new Date();
+      let dateFilter: Date | null = null;
+      
+      if (value === 'today') {
+        dateFilter = now;
+      } else if (value === 'yesterday') {
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        dateFilter = yesterday;
+      } else if (value === 'last-week') {
+        const lastWeek = new Date(now);
+        lastWeek.setDate(now.getDate() - 7);
+        dateFilter = lastWeek;
+      } else if (value === 'last-month') {
+        const lastMonth = new Date(now);
+        lastMonth.setMonth(now.getMonth() - 1);
+        dateFilter = lastMonth;
+      }
+      
+      onDateChange(dateFilter);
     }
   };
 
-  const handleDateChange = (date: Date | null) => {
-    setSelectedDate(date);
-    onDateChange(date);
+  // Gestion de la touche Entrée
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitSearch();
+    }
   };
+  
+  // Pour afficher les filtres actifs
+  const [activeDate, setActiveDate] = useState<string>('');
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-6">
-      <div className="flex flex-col md:flex-row gap-4">
+      <form onSubmit={submitSearch} className="flex flex-col md:flex-row gap-4">
         {/* Search Input */}
         <div className="flex-1 relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -59,47 +85,61 @@ const ContentFilter: React.FC<ContentFilterProps> = ({
           <input
             type="text"
             value={searchQuery}
-            onChange={handleSearch}
+            onChange={handleSearchChange}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 sm:text-sm"
           />
           <button 
-            onClick={submitSearch}
+            type="submit"
             className="absolute inset-y-0 right-0 px-3 flex items-center bg-violet-600 text-white rounded-r-md hover:bg-violet-700"
           >
             Rechercher
           </button>
         </div>
 
-        {/* Date Picker */}
+        {/* Remplacement du DatePicker par un select standard */}
         <div className="relative flex items-center">
           <div className="absolute left-3 z-10">
             <Calendar className="h-5 w-5 text-gray-400" />
           </div>
-          <DatePicker
-            selected={selectedDate}
-            onChange={handleDateChange}
-            locale={fr}
-            dateFormat="dd/MM/yyyy"
-            placeholderText="Filtrer par date"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 sm:text-sm"
-            isClearable
-          />
+          <select
+            onChange={(e) => {
+              handleDateSelect(e);
+              setActiveDate(e.target.options[e.target.selectedIndex].text);
+            }}
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 sm:text-sm appearance-none"
+            defaultValue=""
+          >
+            <option value="">Filtrer par date</option>
+            <option value="today">Aujourd'hui</option>
+            <option value="yesterday">Hier</option>
+            <option value="last-week">7 derniers jours</option>
+            <option value="last-month">30 derniers jours</option>
+          </select>
         </div>
-      </div>
+      </form>
 
       {/* Active Filters */}
-      {(searchQuery || selectedDate) && (
+      {(searchQuery || activeDate !== '') && (
         <div className="mt-3 flex flex-wrap gap-2">
           {searchQuery && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-violet-100 text-violet-800">
               Recherche: {searchQuery}
             </span>
           )}
-          {selectedDate && (
+          {activeDate !== '' && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-violet-100 text-violet-800">
-              Date: {selectedDate.toLocaleDateString('fr-FR')}
+              Date: {activeDate}
+              <button 
+                onClick={() => {
+                  onDateChange(null);
+                  setActiveDate('');
+                }} 
+                className="ml-2 text-violet-600 hover:text-violet-900"
+              >
+                ×
+              </button>
             </span>
           )}
         </div>

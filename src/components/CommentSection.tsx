@@ -45,8 +45,23 @@ const CommentSection: React.FC = () => {
   const fetchComments = async () => {
     try {
       setLoading(true);
-      const { data, error } = await getComments();
-      if (error) throw error;
+      console.log('CommentSection: Fetching comments from API endpoint');
+      
+      // Déterminer l'URL correcte du serveur actuel
+      // Cette méthode utilise la fenêtre actuelle pour obtenir l'hôte et le protocole
+      const serverUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}` : '';
+      const commentsUrl = `${serverUrl}/api/comments`;
+      
+      console.log('Fetching comments with URL:', commentsUrl);
+      const response = await fetch(commentsUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('CommentSection: Received comments data:', { count: data?.length });
+      
       setComments(data || []);
       setError(null);
     } catch (err) {

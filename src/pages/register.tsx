@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { signUp } from '../lib/supabase';
-import { useAppStore } from '../lib/store';
+import { useAppStore } from '@/lib/store';
 import { withPublic } from '../lib/withAuth';
 
 const RegisterPage: React.FC = () => {
@@ -13,11 +12,12 @@ const RegisterPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { setUser, setIsAuthenticated } = useAppStore();
+  const { setUser, setAuthState } = useAppStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
+    // Validation du formulaire
     if (!email || !password || !confirmPassword || !fullName) {
       setError('Veuillez remplir tous les champs');
       return;
@@ -32,28 +32,84 @@ const RegisterPage: React.FC = () => {
     setError(null);
 
     try {
-      const { data, error } = await signUp(email, password, {
-        full_name: fullName
+      // Afficher l'état de l'inscription
+      console.log('Début d\'inscription via API route simplifiée pour:', email);
+      
+      // SOLUTION ALTERNATIVE: Utiliser notre API route simplifiée spécialement créée
+      const response = await fetch('/api/auth/signup-simple', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          userData: { fullName }
+        }),
       });
-
-      if (error) {
-        throw error;
+      
+      const result = await response.json();
+      console.log('Résultat inscription simplifiée:', result);
+      
+      // Vérifier si une erreur est présente dans la réponse
+      if (!response.ok || result.error) {
+        let errorMsg = result.error || 'Erreur lors de l\'inscription';
+        
+        // Messages d'erreur personnalisés selon le type d'erreur
+        if (errorMsg.includes('already exists') || errorMsg.includes('already registered')) {
+          errorMsg = 'Cet email est déjà utilisé';
+        } else if (errorMsg.includes('rate limit')) {
+          errorMsg = 'Trop de tentatives. Veuillez réessayer plus tard';
+        } else if (errorMsg.includes('password')) {
+          errorMsg = 'Mot de passe invalide: minimum 8 caractères requis';
+        }
+        
+        setError(errorMsg);
+        console.error('Erreur d\'inscription:', result.error);
       }
-
-      if (data?.user) {
-        setUser({
-          id: data.user.id,
-          email: data.user.email || '',
-          created_at: data.user.created_at || new Date().toISOString(),
-          full_name: fullName
-        });
-        setIsAuthenticated(true);
-
-        // Redirection vers la page de profil après inscription
-        router.push('/profile');
+      // Si l'inscription a réussi
+      else if (result.success && result.user) {
+        // Adapter le format de l'utilisateur Supabase au format attendu par l'application
+        const formattedUser = {
+          id: result.user.id,
+          email: result.user.email || '',
+          created_at: result.user.created_at || new Date().toISOString(),
+          fullName: fullName
+        };
+        
+        // Mettre à jour l'utilisateur et afficher un message de succès
+        setUser(formattedUser);
+        setError(null); // Effacer toute erreur précédente
+        
+        // Afficher un message de succès directement dans l'interface
+        const successMessage = document.createElement('div');
+        successMessage.className = 'bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4';
+        successMessage.innerHTML = '<strong>Félicitations!</strong> Inscription réussie! Redirection vers votre profil...';
+        const formElement = document.querySelector('form');
+        if (formElement && formElement.parentNode) {
+          formElement.parentNode.insertBefore(successMessage, formElement);
+        }
+        
+        console.log('Inscription réussie! Redirection vers la page de profil...');
+        
+        // Mettre à jour l'état d'authentification global
+        try {
+          // Si disponible, mettre à jour l'état d'authentification global
+          if (setAuthState) {
+            setAuthState(true, false); // isAuthenticated = true, isAdmin = false
+          }
+        } catch (e) {
+          console.log('setAuthState n\'est pas disponible, ignorant cette étape');
+        }
+        
+        // Rediriger vers la page de profil après inscription
+        setTimeout(() => {
+          router.push('/profile');
+        }, 2000);
       }
     } catch (err: any) {
-      console.error('Register error:', err);
+      // Gérer les exceptions
+      console.error('Exception lors de l\'inscription:', err);
       setError(err.message || 'Échec de l\'inscription. Veuillez réessayer.');
     } finally {
       setIsLoading(false);

@@ -1,11 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useAppStore } from '../lib/store';
-import { updateUserProfile } from '../lib/supabase';
-import AvatarUploader from '../components/AvatarUploader';
-import { withAuth } from '../lib/withAuth';
+import { useAppStore } from '@/lib/store';
+import { updateUserProfile, getUserProfile } from '@/lib/supabase';
+import AvatarUploader from '@/components/AvatarUploader';
+import { withAuth } from '@/lib/withAuth';
+import { GetServerSideProps } from 'next';
+import { User } from '@/types';
 
-const ProfilePage: React.FC = () => {
+// Server-side authentication and data fetching
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { req } = context;
+  const token = req.cookies?.token;
+  
+  if (!token) {
+    // Redirect to login if no auth token found
+    return {
+      redirect: {
+        destination: '/login?callbackUrl=/profile',
+        permanent: false,
+      },
+    };
+  }
+  
+  try {
+    // Get user profile data from server side
+    // This is a mock implementation - you'll need to adapt it based on your actual auth flow
+    // The actual implementation would verify the token and fetch user data
+    return {
+      props: { 
+        isServerAuthenticated: true
+      }
+    };
+  } catch (error) {
+    console.error('Error in profile getServerSideProps:', error);
+    return {
+      redirect: {
+        destination: '/login?callbackUrl=/profile',
+        permanent: false,
+      },
+    };
+  }
+};
+
+interface ProfilePageProps {
+  isServerAuthenticated: boolean;
+}
+
+const ProfilePage: React.FC<ProfilePageProps> = ({ isServerAuthenticated }) => {
   const { user, isAuthenticated, updateUserAvatar } = useAppStore();
   const [isUpdating, setIsUpdating] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -13,7 +54,8 @@ const ProfilePage: React.FC = () => {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Skip client-side authentication check if server already authenticated us
+    if (!isServerAuthenticated && !isAuthenticated) {
       router.push('/login?callbackUrl=/profile');
       return;
     }
@@ -21,7 +63,7 @@ const ProfilePage: React.FC = () => {
     if (user?.avatar_url) {
       setAvatarUrl(user.avatar_url);
     }
-  }, [isAuthenticated, router, user]);
+  }, [isServerAuthenticated, isAuthenticated, router, user]);
 
   const handleAvatarUploaded = async (url: string) => {
     if (!user) return;

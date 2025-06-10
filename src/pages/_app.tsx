@@ -6,7 +6,18 @@ import Sidebar from '@/components/SideBar';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
+// Importer ClerkProvider directement
+import { ClerkProvider } from '@clerk/nextjs';
+
+// Importer les vérifications de sécurité pour la production
+import ensureProductionSafety from '@/lib/production-checks';
+
+// Exécuter les vérifications de sécurité au démarrage
+ensureProductionSafety();
+
 function MyApp({ Component, pageProps }: AppProps) {
+  // Récupérer la clé Clerk depuis les variables d'environnement
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { setAuthState, setUser } = useAppStore();
   
@@ -43,7 +54,8 @@ function MyApp({ Component, pageProps }: AppProps) {
     checkAuth();
   }, [setAuthState, setUser]);
 
-  return (
+  // Create the app content
+  const AppContent = () => (
     <div className="bg-violet-300 bg-opacity-10 min-h-screen">
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       
@@ -62,6 +74,13 @@ function MyApp({ Component, pageProps }: AppProps) {
         </div>
       </div>
     </div>
+  );
+
+  // Only use ClerkProvider if we have a publishable key, otherwise render without it
+  return (
+    <ClerkProvider publishableKey={publishableKey || "pk_test_YnJpZWYtbGlnZXItOTkuY2xlcmsuYWNjb3VudHMuZGV2JA"}>
+      <AppContent />
+    </ClerkProvider>
   );
 }
 

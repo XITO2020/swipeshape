@@ -144,11 +144,7 @@ const HomePage: React.FC<HomePageProps> = ({ useVideoHero = false }) => {
                   Réessayer
                 </button>
               </div>
-            ) : articles.length === 0 ? (
-              <div className="text-center py-10">
-                <p className="text-gray-500">Aucun article disponible pour le moment.</p>
-              </div>
-            ) : (
+            ) : articles && articles.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {articles.slice(0, 6).map((article) => (
                   <div key={article.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
@@ -186,6 +182,10 @@ const HomePage: React.FC<HomePageProps> = ({ useVideoHero = false }) => {
                     </div>
                   </div>
                 ))}
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-gray-500">Aucun article disponible pour le moment.</p>
               </div>
             )}
             

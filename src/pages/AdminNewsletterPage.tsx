@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import NewsletterEditor from '../components/NewsletterEditor';
-import { supabase } from '../lib/supabase';
+import NewsletterEditor from '@/components/NewsletterEditor';
+import { supabase } from '@/lib/supabase';
 
 const AdminNewsletterPage: React.FC = () => {
   const [showEditor, setShowEditor] = useState(false);

@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import dynamic from 'next/dynamic';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { getArticles, createArticle, updateArticle, deleteArticle } from '../lib/supabase';
 import { Article } from '../types';
 import ImageUploader from '../components/ImageUploader';
+
+// Dynamically import ReactQuill with SSR disabled
+const ReactQuill = dynamic(() => import('react-quill'), {
+  ssr: false,
+  loading: () => <p>Loading editor...</p>
+});
+
+// Import the CSS only on the client side
+const QuillCSS = () => {
+  useEffect(() => {
+    // This code only runs on the client
+    import('react-quill/dist/quill.snow.css');
+  }, []);
+  return null;
+};
 
 const AdminPage: React.FC = () => {
   const { isAuthenticated, isAdmin } = useAppStore();
@@ -126,6 +140,8 @@ const AdminPage: React.FC = () => {
   };
 
   return (
+    <>
+      <QuillCSS />
     <div className="min-h-screen pt-16 md:pt-0 md:pl-64">
       <div className="max-w-6xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold text-purple-800 mb-6">Admin Dashboard</h1>
@@ -279,6 +295,7 @@ const AdminPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

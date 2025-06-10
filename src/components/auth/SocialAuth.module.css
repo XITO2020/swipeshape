@@ -1,0 +1,74 @@
+.socialAuthContainer {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.socialAuthTitle {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+  color: #555;
+}
+
+.socialButtonsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.socialButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  background-color: white;
+  cursor: pointer;
+  width: 100%;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.socialButton:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.socialIcon {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+
+.google {
+  color: #4285F4;
+}
+
+.instagram {
+  color: #E1306C;
+}
+
+.tiktok {
+  color: #000000;
+}
+
+.separatorContainer {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.separator {
+  flex-grow: 1;
+  height: 1px;
+  background-color: #e0e0e0;
+}
+
+.separatorText {
+  padding: 0 15px;
+  color: #777;
+  font-size: 14px;
+}

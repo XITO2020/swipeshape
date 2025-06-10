@@ -5,16 +5,50 @@ import axios from "axios";
 import { Program } from "@/types";
 import { useAppStore } from "@/lib/store";
 import api from "@/lib/api";
+import { GetServerSideProps } from "next";
 
-export default function ProgramDetailPage() {
+// Server-side data fetching
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { id } = context.params || {};
+  
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const response = await axios.get<Program>(`${baseUrl}/api/programs/${id}`);
+    
+    return { 
+      props: { 
+        initialProgram: response.data || null
+      } 
+    };
+  } catch (error) {
+    console.error('Error fetching program in getServerSideProps:', error);
+    return { 
+      props: { 
+        initialProgram: null 
+      } 
+    };
+  }
+};
+
+interface ProgramDetailPageProps {
+  initialProgram: Program | null;
+}
+
+export default function ProgramDetailPage({ initialProgram }: ProgramDetailPageProps) {
   const router = useRouter();
   const { id } = router.query;
-  const [program, setProgram] = useState<Program | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [program, setProgram] = useState<Program | null>(initialProgram);
+  const [loading, setLoading] = useState(!initialProgram);
   const { isAuthenticated, user } = useAppStore();
 
   useEffect(() => {
     async function loadProgram() {
+      // Skip fetching if we already have the program from server-side props
+      if (initialProgram) {
+        console.log('Using server-side fetched program data');
+        return;
+      }
+      
       if (id) {
         try {
           const { data } = await axios.get<Program>(`/api/programs/${id}`);
@@ -27,7 +61,7 @@ export default function ProgramDetailPage() {
       }
     }
     loadProgram();
-  }, [id]);
+  }, [id, initialProgram]);
 
   const handleBuy = async () => {
     if (!isAuthenticated || !user) {

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { signIn } from '../lib/supabase';
-import { useAppStore } from '../lib/store';
-import '../LoginPage.css'; // Assurez-vous d'importer votre fichier CSS
+import { signIn } from '@/lib/supabase';
+import { useAppStore } from '@/lib/store';
+import styles from '@/styles/Login.module.css'; // Using CSS modules instead
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');

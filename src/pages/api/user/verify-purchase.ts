@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { verifyAuthToken } from '../../../lib/auth';
-import { checkUserCanComment } from '../../../lib/supabase';
+import { checkUserCanComment } from '../../../lib/db-utils';
 import Cors from 'cors';
 
 // Initialisation du middleware CORS

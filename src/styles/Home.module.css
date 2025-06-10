@@ -1,0 +1,132 @@
+.container {
+  padding: 0 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.main {
+  min-height: 100vh;
+  padding: 4rem 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.title {
+  margin: 0;
+  line-height: 1.15;
+  font-size: 2.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+/* PostgreSQL test styles */
+.success {
+  padding: 0.75rem 1.5rem;
+  background-color: rgba(0, 200, 0, 0.1);
+  border-left: 4px solid green;
+  color: green;
+  margin: 1rem 0;
+  border-radius: 4px;
+}
+
+.error {
+  padding: 0.75rem 1.5rem;
+  background-color: rgba(255, 0, 0, 0.1);
+  border-left: 4px solid red;
+  color: red;
+  margin: 1rem 0;
+  border-radius: 4px;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.list li {
+  margin: 0.5rem 0;
+}
+
+.list button {
+  padding: 0.5rem 1rem;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.list button:hover {
+  background: #e0e0e0;
+}
+
+.cardWide {
+  border: 1px solid #eaeaea;
+  border-radius: 10px;
+  padding: 1.5rem;
+  width: 100%;
+  background-color: white;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.dataTable {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.dataTable th,
+.dataTable td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.dataTable th {
+  background-color: #f8f8f8;
+  font-weight: bold;
+}
+
+.dataTable tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.card {
+  margin: 1rem 0;
+  padding: 1.5rem;
+  text-align: left;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid #eaeaea;
+  border-radius: 10px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  width: 100%;
+}
+
+.card h2, .cardWide h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+}
+
+.card p, .cardWide p {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.5;
+}

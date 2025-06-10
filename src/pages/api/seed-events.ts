@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { executeQuery } from './db';
 
 // This is a protected API route for seeding events
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -9,16 +9,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Use service role key from server environment (not exposed client-side)
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    
-    if (!supabaseServiceKey) {
-      return res.status(500).json({ error: 'Server configuration error' });
+    // Vérifier que la connexion à la base de données est configurée
+    if (!process.env.DATABASE_URL) {
+      return res.status(500).json({ error: 'Database configuration error (DATABASE_URL not set)' });
     }
-    
-    // Create admin client with service role key
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Sample events data
     const events = [
@@ -45,21 +39,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     ];
 
-    // Insert events into the database
-    const { data, error } = await supabase
-      .from('events')
-      .upsert(events, { onConflict: 'title' })
-      .select();
-
-    if (error) {
-      console.error('Error seeding events:', error);
-      return res.status(500).json({ error: 'Failed to seed events' });
+    // Insert events into the database using direct SQL
+    const results = [];
+    
+    for (const event of events) {
+      const insertQuery = `
+        INSERT INTO events (title, description, event_date, location, image_url)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (title) DO UPDATE SET
+          description = $2,
+          event_date = $3,
+          location = $4,
+          image_url = $5
+        RETURNING *
+      `;
+      
+      const { data, error } = await executeQuery(insertQuery, [
+        event.title,
+        event.description,
+        event.event_date,
+        event.location,
+        event.image_url
+      ]);
+      
+      if (error) {
+        console.error(`Error seeding event ${event.title}:`, error);
+        return res.status(500).json({ 
+          error: 'Failed to seed events', 
+          details: error instanceof Error ? error.message : String(error)
+        });
+      }
+      
+      if (data && data.length > 0) {
+        results.push(data[0]);
+      }
     }
 
     return res.status(200).json({ 
       message: 'Events seeded successfully',
-      count: data?.length || 0,
-      data 
+      count: results.length,
+      data: results
     });
   } catch (error) {
     console.error('Unexpected error:', error);

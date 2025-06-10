@@ -1,18 +1,10 @@
 // API Route pour les articles
 import { NextApiRequest, NextApiResponse } from 'next';
 import { executeQuery } from './db';
+import { withApiMiddleware } from '@/lib/api-middleware';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Activer CORS
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
-
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
+// Utilisation du middleware pour limiter les appels excessifs
+async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (req.method === 'GET') {
     try {
@@ -55,3 +47,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
+
+// Exporter le handler avec le middleware appliqué
+export default withApiMiddleware(handler);

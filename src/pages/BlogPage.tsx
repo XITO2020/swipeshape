@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 // Utiliser l'API centralisée avec axios
-import { getArticles } from '../lib/api';
-import ContentFilter from '../components/ContentFilter';
-import { Article } from '../types';
-import { useAppStore } from '../lib/store';
+import { getArticles } from '@/lib/api';
+import ContentFilter from '@/components/ContentFilter';
+import { Article } from '@/types';
+import { useAppStore } from '@/lib/store';
 
-const BlogPage: React.FC = () => {
+interface BlogPageProps {
+  initialArticles?: Article[];
+}
+
+const BlogPage: React.FC<BlogPageProps> = ({ initialArticles = [] }) => {
   // Utiliser le store global Zustand au lieu de l'état local pour les articles
   const { articles, setArticles } = useAppStore();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialArticles?.length);
   const [error, setError] = useState<string | null>(null);
+  
+  // Référence pour savoir si nous avons déjà initialisé les articles
+  const initializedRef = React.useRef(false);
 
-  const fetchArticles = async (query: string = '', date: Date | null = null) => {
+  // Définir fetchArticles en tant que fonction de référence pour éviter les recréations
+  const fetchArticlesRef = React.useRef(async (query: string = '', date: Date | null = null) => {
     setIsLoading(true);
     setError(null);
 
@@ -34,11 +42,17 @@ const BlogPage: React.FC = () => {
       }
       
       console.log(`Articles récupérés: ${data?.length || 0}`);
-      // Stocker dans le store global
-      setArticles(data || []);
-      // Stocker aussi localement
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('cachedArticles', JSON.stringify(data || []));
+      
+      // Stocker dans le store global UNIQUEMENT si les données sont différentes
+      // Utiliser une désstructuration pour éviter les références directes à l'état articles
+      const currentArticles = useAppStore.getState().articles;
+      if (JSON.stringify(data) !== JSON.stringify(currentArticles)) {
+        setArticles(data || []);
+        
+        // Stocker aussi localement
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cachedArticles', JSON.stringify(data || []));
+        }
       }
     } catch (err: any) {
       console.error('Error détaillée des articles:', err);
@@ -46,19 +60,62 @@ const BlogPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  });
+  
+  // Fonction fetchArticles accessible à partir de la référence
+  const fetchArticles = fetchArticlesRef.current;
 
+  // Un seul useEffect pour gérer l'initialisation et le chargement initial
   useEffect(() => {
-    fetchArticles();
-  }, []);
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    
+    // Utiliser d'abord les articles initiaux fournis par SSR
+    if (initialArticles?.length > 0) {
+      console.log('Using server-side fetched articles:', initialArticles.length);
+      // Ne mettre à jour que si nécessaire
+      if (articles.length === 0 || JSON.stringify(articles) !== JSON.stringify(initialArticles)) {
+        setArticles(initialArticles);
+        setIsLoading(false);
+      }
+    } 
+    // Si pas d'articles initiaux, charger depuis l'API uniquement si nécessaire
+    else if (articles.length === 0) {
+      console.log('Fetching articles from API...');
+      fetchArticles();
+    }
+  }, [initialArticles, articles, setArticles]); // Inclure les dépendances appropriées
 
-  const handleSearch = (query: string) => {
-    fetchArticles(query);
-  };
+  // Utiliser une référence pour stocker les données de filtrage et éviter les rendus excessifs
+  const filtersRef = React.useRef({
+    query: '',
+    date: null as Date | null
+  });
+  
+  // Mémoriser fetchArticles avec toutes les dépendances nécessaires
+  const memoizedFetchArticles = React.useCallback(
+    // Le wrapping de la fonction permet d'éviter les boucles infinies
+    (query: string = '', date: Date | null = null) => {
+      console.log('Mémorized fetchArticles called:', { query, date });
+      // Ne déclencher l'appel que si nécessaire
+      return fetchArticles(query, date);
+    },
+    // Exclure les dépendances qui changent souvent, mais garder les essentielles
+    [/* pas de dépendances pour éviter les recréations */]
+  );
+  
+  // Optimiser les gestionnaires d'événements
+  const handleSearch = React.useCallback((query: string) => {
+    console.log('Search triggered with query:', query);
+    filtersRef.current.query = query;
+    memoizedFetchArticles(query, filtersRef.current.date);
+  }, [memoizedFetchArticles]); // Dépendance stable
 
-  const handleDateChange = (date: Date | null) => {
-    fetchArticles('', date);
-  };
+  const handleDateChange = React.useCallback((date: Date | null) => {
+    console.log('Date filter changed:', date);
+    filtersRef.current.date = date;
+    memoizedFetchArticles(filtersRef.current.query, date);
+  }, [memoizedFetchArticles]); // Dépendance stable
 
   if (isLoading) {
     return (

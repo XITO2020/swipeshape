@@ -1,7 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import { Test } from '@/types';
+
+// Add server-side props for better performance
+export async function getServerSideProps() {
+  try {
+    // Fetch tests on the server side
+    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/tests`);
+    
+    return {
+      props: {
+        initialTests: response.data || [],
+        error: null
+      }
+    };
+  } catch (err) {
+    console.error('Exception in getServerSideProps for tests:', err);
+    return {
+      props: {
+        initialTests: [],
+        error: 'Une erreur est survenue lors du chargement des tests.'
+      }
+    };
+  }
+}
+
+type Question = {
+  question: string;
+  options?: string[];
+  type?: string;
+};
+
+type TestCategory = {
+  id: number;
+  name: string;
+  description: string;
+  image: string;
+  duration: string;
+  questions: Question[];
+};
 
 // Sample test data
-const testCategories = [
+const testCategories: TestCategory[] = [
   {
     id: 1,
     name: 'Test de Condition Physique',
@@ -75,7 +115,16 @@ const testCategories = [
   }
 ];
 
-const TestsPage: React.FC = () => {
+interface TestsPageProps {
+  initialTests: TestCategory[];
+  error: string | null;
+}
+
+// Using React.memo to prevent unnecessary re-renders
+const TestsPage: React.FC<TestsPageProps> = ({ initialTests = [], error: initialError = null }) => {
+  const [tests, setTests] = useState<TestCategory[]>(initialTests);
+  const [isLoading, setIsLoading] = useState(!initialTests.length);
+  const [error, setError] = useState<string | null>(initialError);
   const [selectedTest, setSelectedTest] = useState<number | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -88,13 +137,38 @@ const TestsPage: React.FC = () => {
     setShowResults(false);
   };
 
+  // Fetch tests if not provided via SSR
+  useEffect(() => {
+    if (initialTests.length > 0) {
+      console.log('Using server-side fetched tests:', initialTests.length);
+      return;
+    }
+    
+    const fetchTests = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const response = await axios.get('/api/tests');
+        setTests(response.data || []);
+      } catch (err) {
+        console.error('Error fetching tests:', err);
+        setError('Une erreur est survenue lors du chargement des tests.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchTests();
+  }, [initialTests.length]);
+
   const handleAnswer = (answer: string | number) => {
     setAnswers({
       ...answers,
       [currentQuestion]: answer
     });
 
-    const test = testCategories.find(t => t.id === selectedTest);
+    const test = tests.find(t => t.id === selectedTest);
     
     if (test && currentQuestion < test.questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
@@ -109,7 +183,7 @@ const TestsPage: React.FC = () => {
   };
 
   const getCurrentTest = () => {
-    return testCategories.find(test => test.id === selectedTest);
+    return tests.find(test => test.id === selectedTest);
   };
 
   const renderTestQuestion = () => {
@@ -193,53 +267,78 @@ const TestsPage: React.FC = () => {
     );
   };
 
-  const renderTestSelection = () => {
+  // Display loading indicator while fetching tests
+  if (isLoading) {
     return (
-      <>
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">Tests Personnalisés</h1>
-        <p className="text-lg text-gray-600 mb-10 max-w-3xl">
-          Découvrez votre profil fitness en répondant à nos tests rapides. Ces évaluations vous aideront à comprendre votre niveau actuel et à identifier les programmes les plus adaptés à vos besoins.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {testCategories.map((test) => (
-            <div key={test.id} className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-              {test.image && (
-                <img
-                  src={test.image}
-                  alt={test.name}
-                  className="w-full h-48 object-cover"
-                />
-              )}
-              <div className="p-4">
-                <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                  {test.name}
-                </h2>
-                <p className="text-gray-600 mb-3">
-                  {test.description}
-                </p>
-                <div className="flex items-center text-sm text-gray-500 mb-4">
-                  <span>Durée : {test.duration}</span>
-                </div>
-
-                <button 
-                  className="w-full px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors"
-                  onClick={() => handleStartTest(test.id)}
-                >
-                  Commencer le test
-                </button>
-              </div>
-            </div>
-          ))}
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-600"></div>
         </div>
-      </>
+      </div>
     );
-  };
+  }
+  
+  // Display error message if tests fetching failed
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 text-red-600 p-6 rounded-lg shadow-md text-center">
+          <p className="font-medium">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       {selectedTest === null ? (
-        renderTestSelection()
+        <>
+          <h1 className="text-3xl font-bold text-gray-800 mb-8">Tests & Analyses</h1>
+          <p className="text-lg text-gray-600 mb-10 max-w-3xl">
+            Découvrez votre profil fitness en répondant à nos tests rapides. Ces évaluations vous aideront à comprendre votre niveau actuel et à identifier les programmes les plus adaptés à vos besoins.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {tests.length === 0 ? (
+              <div className="col-span-3 text-center py-10">
+                <p className="text-gray-500">Aucun test disponible pour le moment.</p>
+              </div>
+            ) : tests.map(test => (
+              <div key={test.id} className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                {test.image && (
+                  <img
+                    src={test.image}
+                    alt={test.name}
+                    className="w-full h-48 object-cover"
+                  />
+                )}
+                <div className="p-4">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                    {test.name}
+                  </h2>
+                  <p className="text-gray-600 mb-3">
+                    {test.description}
+                  </p>
+                  <div className="flex items-center text-sm text-gray-500 mb-4">
+                    <span>Durée : {test.duration}</span>
+                  </div>
+
+                  <button 
+                    className="w-full px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors"
+                    onClick={() => handleStartTest(test.id)}
+                  >
+                    Commencer le test
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       ) : (
         <div className="max-w-2xl mx-auto">
           <h1 className="text-2xl font-bold text-gray-800 mb-6">
@@ -253,4 +352,4 @@ const TestsPage: React.FC = () => {
   );
 };
 
-export default TestsPage;
+export default React.memo(TestsPage);

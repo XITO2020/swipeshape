@@ -1,54 +1,125 @@
-import React, { useEffect, useState } from 'react';
-import ProgramCard from '../../components/ProgramCard';
-import { useAppStore } from '../../lib/store';
-// Utiliser l'API centralisée avec axios
-import { getPrograms } from '../../lib/api';
-import { Program } from '../../types';
+import React, { useEffect, useState, useRef } from 'react';
+import ProgramCard from '@/components/ProgramCard';
+import { useAppStore } from '@/lib/store';
+import { getPrograms } from '@/lib/api';
+// Utilisation de la version SSR-safe pour getServerSideProps
+import { ssrGetPrograms } from '@/lib/ssr-api';
+import { Program } from '@/types';
 
-const ProgramsPage: React.FC = () => {
+// Server-side data fetching
+export async function getServerSideProps() {
+  try {
+    // Fetch programs on the server side using the SSR-safe API implementation
+    const { data, error } = await ssrGetPrograms();
+    
+    if (error) {
+      console.error('Error fetching programs in getServerSideProps:', error);
+      return { props: { initialPrograms: [] } };
+    }
+    
+    return { props: { initialPrograms: data || [] } };
+  } catch (err) {
+    console.error('Exception in getServerSideProps:', err);
+    return { props: { initialPrograms: [] } };
+  }
+}
+
+interface ProgramsPageProps {
+  initialPrograms?: Program[];
+}
+
+const ProgramsPage: React.FC<ProgramsPageProps> = ({ initialPrograms = [] }) => {
   const { programs, setPrograms } = useAppStore();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialPrograms?.length);
   const [error, setError] = useState<string | null>(null);
+  
+  // Référence pour éviter les doubles initialisations
+  const initializedRef = useRef(false);
+  
+  // Utilisation de useRef pour stabiliser la fonction fetchPrograms
+  const fetchProgramsRef = useRef(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Check if Supabase environment variables are defined
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        console.error('Variables d\'environnement Supabase manquantes');
+        setError('Configuration de la base de données incomplète. Contactez l\'administrateur.');
+        setIsLoading(false);
+        return;
+      }
 
-  useEffect(() => {
-    const fetchPrograms = async () => {
-      setIsLoading(true);
-      setError(null);
+      const { data, error } = await getPrograms();
       
-      try {
-        // Vérifier si les variables d'environnement Supabase sont définies
-        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-          console.error('Variables d\'environnement Supabase manquantes');
-          setError('Configuration de la base de données incomplète. Contactez l\'administrateur.');
-          return;
-        }
-
-        const { data, error } = await getPrograms();
-        
-        if (error) {
-          console.error('Erreur Supabase:', error);
-          setError(`Erreur lors du chargement des programmes: ${typeof error === 'object' && error !== null && 'message' in error ? (error as any).message : 'Erreur inconnue'}`);
-          return;
-        }
-        
-        console.log(`Programmes récupérés: ${data?.length || 0}`);
-        // Stocker dans le store global
+      if (error) {
+        console.error('Erreur Supabase:', error);
+        setError(`Erreur lors du chargement des programmes: ${typeof error === 'object' && error !== null && 'message' in error ? (error as any).message : 'Erreur inconnue'}`);
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log(`Programmes récupérés: ${data?.length || 0}`);
+      
+      // Comparaison profonde avant de mettre à jour le store pour éviter les boucles infinies
+      const currentDataString = JSON.stringify(data || []);
+      const existingDataString = JSON.stringify(programs);
+      
+      if (currentDataString !== existingDataString) {
+        // Store in global store uniquement si les données ont changé
         setPrograms(data || []);
-        // Stocker aussi localement pour assurer la persistance
+        // Also store locally for persistence
         if (typeof window !== 'undefined') {
           localStorage.setItem('cachedPrograms', JSON.stringify(data || []));
         }
-      } catch (err: any) {
-        console.error('Erreur détaillée programmes:', err);
-        setError(`Une erreur est survenue: ${err?.message || 'Erreur inconnue'}`);
-      } finally {
-        setIsLoading(false);
+      } else {
+        console.log('Les données des programmes sont identiques, mise à jour du store évitée');
       }
-    };
+    } catch (err: any) {
+      console.error('Erreur détaillée programmes:', err);
+      setError(`Une erreur est survenue: ${err?.message || 'Erreur inconnue'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  });
 
-    fetchPrograms();
-  }, [setPrograms]);
+  // Set initial programs from server-side props if available
+  useEffect(() => {
+    // Éviter de réinitialiser plusieurs fois
+    if (initializedRef.current) {
+      return;
+    }
+    initializedRef.current = true;
+    
+    // Check if we already have programs (either from SSR or previous fetch)
+    if (initialPrograms.length > 0) {
+      // Comparaison profonde avant de mettre à jour le store
+      const initialDataString = JSON.stringify(initialPrograms);
+      const existingDataString = JSON.stringify(programs);
+      
+      if (initialDataString !== existingDataString) {
+        // Si des programmes sont déjà disponibles via SSR et différents de ceux du store
+        setPrograms(initialPrograms);
+      }
+      
+      setIsLoading(false);
+      // Log pour debug sans créer de re-render
+      console.log('Using server-side programs:', initialPrograms.length);
+      return;
+    }
+    
+    // Seulement si on n'a pas encore de programmes dans le state global
+    if (programs.length === 0) {
+      // Utilise la fonction fetchPrograms stable via useRef
+      fetchProgramsRef.current();
+    }
+    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Dépendance vide pour éviter les re-renders multiples
 
+  // Accès à la fonction fetchPrograms via la référence pour les cas où on veut la réutiliser
+  const fetchPrograms = fetchProgramsRef.current;
+  
   if (isLoading) {
     return (
       <div className="min-h-screen pt-16 md:pt-0 md:pl-64 flex justify-center items-center">
@@ -65,7 +136,7 @@ const ProgramsPage: React.FC = () => {
           Découvrez nos programmes de remise en forme conçus par des professionnels et adaptés aux femmes qui souhaitent développer leur masse musculaire et leur force.
         </p>
         
-        {/* Afficher les variables d'environnement en mode développement */}
+        {/* Show environment variables in development mode */}
         {process.env.NODE_ENV === 'development' && (
           <div className="bg-blue-50 p-4 mb-6 rounded-lg text-sm">
             <p>État de la configuration:</p>
@@ -98,7 +169,7 @@ const ProgramsPage: React.FC = () => {
           </div>
         ) : (
           <div className="text-center py-10">
-            <p className="text-gray-500">Chargement des programmes...</p>
+            <p className="text-gray-500">Aucun programme disponible pour le moment.</p>
           </div>
         )}
       </div>

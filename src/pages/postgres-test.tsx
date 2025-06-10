@@ -1,88 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Head from 'next/head';
-import { query, testConnection } from '../lib/pgClient';
-import styles from '../styles/Home.module.css';
+import { GetServerSideProps } from 'next';
+import styles from '@/styles/Home.module.css';
 
-export default function PostgresTest() {
-  const [connectionStatus, setConnectionStatus] = useState<{ success: boolean; time?: string; error?: any } | null>(null);
-  const [tables, setTables] = useState<string[]>([]);
+interface PostgresTestProps {
+  initialData: {
+    connectionStatus: { success: boolean; time?: string; error?: any } | null;
+    tables: string[];
+    error: string | null;
+  };
+}
+
+type TableRow = Record<string, any>;
+
+export default function PostgresTest({ initialData }: PostgresTestProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [tableData, setTableData] = useState<any[] | null>(null);
+  const [tableData, setTableData] = useState<TableRow[] | null>(null);
   const [tableColumns, setTableColumns] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialData.error);
 
-  useEffect(() => {
-    // Test connection on component mount
-    const checkConnection = async () => {
-      try {
-        setIsLoading(true);
-        const result = await testConnection();
-        setConnectionStatus(result);
-        
-        if (result.success) {
-          // If connection successful, fetch table list
-          fetchTables();
-        }
-      } catch (err) {
-        setError('Failed to connect to database');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // We get this data from the server now
+  const connectionStatus = initialData.connectionStatus;
+  const tables = initialData.tables;
 
-    checkConnection();
-  }, []);
-
-  const fetchTables = async () => {
-    try {
-      setIsLoading(true);
-      // Query to get all tables in the public schema
-      const result = await query(`
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public'
-        ORDER BY table_name
-      `);
-      
-      if (result.rows) {
-        setTables(result.rows.map(row => row.table_name));
-      }
-    } catch (err) {
-      setError('Failed to fetch tables');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchTableDetails = async (tableName: string) => {
+  // Instead of fetching on the client, we'll fetch data via API routes
+  const fetchTableData = async (tableName: string) => {
     try {
       setIsLoading(true);
       setSelectedTable(tableName);
       setTableData(null);
+      setTableColumns([]);
       
-      // Get column information
-      const columnsResult = await query(`
-        SELECT column_name, data_type
-        FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = $1
-        ORDER BY ordinal_position
-      `, [tableName]);
+      // Call API endpoint instead of direct database query
+      const response = await fetch(`/api/database/table-data?table=${encodeURIComponent(tableName)}`);
       
-      setTableColumns(columnsResult.rows.map(row => 
-        `${row.column_name} (${row.data_type})`
-      ));
+      if (!response.ok) {
+        throw new Error('Failed to fetch table data');
+      }
       
-      // Get table data (limit to 10 rows)
-      const dataResult = await query(`
-        SELECT * FROM "${tableName}" LIMIT 10
-      `);
+      const data = await response.json();
       
-      setTableData(dataResult.rows);
-    } catch (err) {
-      setError(`Failed to fetch details for table ${tableName}`);
+      setTableColumns(data.columns || []);
+      setTableData(data.rows || []);
+    } catch (err: any) {
+      setError(`Failed to fetch data from ${tableName}: ${err.message}`);
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -92,86 +54,71 @@ export default function PostgresTest() {
   return (
     <div className={styles.container}>
       <Head>
-        <title>PostgreSQL Connection Test</title>
+        <title>PostgreSQL Test</title>
+        <meta name="description" content="Test PostgreSQL Connection" />
       </Head>
 
       <main className={styles.main}>
         <h1 className={styles.title}>PostgreSQL Connection Test</h1>
         
-        <div className={styles.card} style={{ marginTop: '2rem', padding: '1.5rem', width: '100%', maxWidth: '800px' }}>
-          <h2>Connection Status</h2>
-          {isLoading && <p>Loading...</p>}
-          {connectionStatus && (
-            connectionStatus.success ? (
-              <p style={{ color: 'green' }}>✅ Connected to PostgreSQL database at {connectionStatus.time}</p>
-            ) : (
-              <p style={{ color: 'red' }}>❌ Connection failed: {connectionStatus.error?.message || 'Unknown error'}</p>
-            )
-          )}
-          {error && <p style={{ color: 'red' }}>{error}</p>}
-        </div>
-
+        {/* Connection status */}
+        {connectionStatus ? (
+          <div className={connectionStatus.success ? styles.success : styles.error}>
+            {connectionStatus.success 
+              ? `✅ Connected successfully in ${connectionStatus.time}ms` 
+              : `❌ Connection failed: ${connectionStatus.error}`}
+          </div>
+        ) : (
+          <p>Testing connection...</p>
+        )}
+        
+        {/* Error display */}
+        {error && <div className={styles.error}>{error}</div>}
+        
+        {/* Display tables list if connection succeeded */}
         {connectionStatus?.success && (
-          <>
-            <div className={styles.card} style={{ marginTop: '1rem', padding: '1.5rem', width: '100%', maxWidth: '800px' }}>
+          <div className={styles.grid}>
+            <div className={styles.card}>
               <h2>Database Tables</h2>
-              {tables.length > 0 ? (
-                <ul style={{ listStyleType: 'none', padding: 0 }}>
-                  {tables.map(table => (
-                    <li key={table} style={{ margin: '0.5rem 0' }}>
-                      <button 
-                        onClick={() => fetchTableDetails(table)}
-                        style={{ 
-                          padding: '0.5rem 1rem', 
-                          background: selectedTable === table ? '#0070f3' : '#f0f0f0',
-                          color: selectedTable === table ? 'white' : 'black',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          width: '100%',
-                          textAlign: 'left'
-                        }}
-                      >
-                        {table}
+              {isLoading ? (
+                <p>Loading...</p>
+              ) : tables.length > 0 ? (
+                <ul className={styles.list}>
+                  {tables.map((table) => (
+                    <li key={table}>
+                      <button onClick={() => fetchTableData(table)}>
+                        {table} {selectedTable === table && '(selected)'}
                       </button>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p>No tables found in public schema</p>
+                <p>No tables found</p>
               )}
             </div>
-
+            
+            {/* Display table data if a table is selected */}
             {selectedTable && (
-              <div className={styles.card} style={{ marginTop: '1rem', padding: '1.5rem', width: '100%', maxWidth: '800px' }}>
+              <div className={styles.cardWide}>
                 <h2>Table: {selectedTable}</h2>
-                
-                <h3>Columns</h3>
-                <ul>
-                  {tableColumns.map((column, index) => (
-                    <li key={index}>{column}</li>
-                  ))}
-                </ul>
-                
-                <h3>Sample Data</h3>
-                {tableData && tableData.length > 0 ? (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                {isLoading ? (
+                  <p>Loading data...</p>
+                ) : tableData ? (
+                  <div className={styles.tableWrapper}>
+                    <table className={styles.dataTable}>
                       <thead>
                         <tr>
-                          {Object.keys(tableData[0]).map(key => (
-                            <th key={key} style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>
-                              {key}
-                            </th>
+                          {tableColumns.map((column: string) => (
+                            <th key={column}>{column}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {tableData.map((row, rowIndex) => (
-                          <tr key={rowIndex}>
-                            {Object.values(row).map((value: any, valIndex) => (
-                              <td key={valIndex} style={{ border: '1px solid #ddd', padding: '8px' }}>
-                                {typeof value === 'object' ? JSON.stringify(value) : String(value || '')}
+                        {tableData.map((row: TableRow, i: number) => (
+                          <tr key={i}>
+                            {tableColumns.map((column: string) => (
+                              <td key={column}>
+                                {row[column] !== null ? String(row[column]) : 'NULL'}
                               </td>
                             ))}
                           </tr>
@@ -180,24 +127,75 @@ export default function PostgresTest() {
                     </table>
                   </div>
                 ) : (
-                  <p>No data found in table</p>
+                  <p>No data available</p>
                 )}
               </div>
             )}
-          </>
+          </div>
         )}
-
-        <div className={styles.card} style={{ marginTop: '2rem', padding: '1.5rem', width: '100%', maxWidth: '800px' }}>
+        
+        <div className={styles.card} style={{ marginTop: '2rem' }}>
           <h2>Troubleshooting Tips</h2>
           <ul>
             <li>Make sure you've added the correct database credentials to your <code>.env.local</code> file</li>
-            <li>Check that your database password is correct</li>
-            <li>Verify that your IP address is allowed in Supabase's database settings</li>
-            <li>If tables are missing, you may need to create them</li>
+            <li>Verify that your IP address is allowed in database settings</li>
             <li>Check if RLS (Row Level Security) policies are preventing access</li>
           </ul>
         </div>
       </main>
     </div>
   );
+}
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  // Move database operations to the server side
+  try {
+    // Import server-side only
+    const { query, testConnection } = require('@/lib/pgClient');
+    
+    // Test connection
+    const connectionStatus = await testConnection();
+    
+    // Get tables if connection successful
+    let tables: string[] = [];
+    let error = null;
+    
+    if (connectionStatus.success) {
+      try {
+        const result = await query(`
+          SELECT table_name 
+          FROM information_schema.tables 
+          WHERE table_schema = 'public'
+          ORDER BY table_name ASC;
+        `);
+        
+        if (result.rows) {
+          tables = result.rows.map((row: any) => row.table_name);
+        }
+      } catch (err: any) {
+        error = 'Failed to fetch tables: ' + err.message;
+      }
+    }
+    
+    return {
+      props: {
+        initialData: {
+          connectionStatus,
+          tables,
+          error
+        }
+      }
+    };
+  } catch (err: any) {
+    // Return error state if server-side code fails
+    return {
+      props: {
+        initialData: {
+          connectionStatus: { success: false, error: err.message },
+          tables: [],
+          error: 'Server error: ' + err.message
+        }
+      }
+    };
+  }
 }

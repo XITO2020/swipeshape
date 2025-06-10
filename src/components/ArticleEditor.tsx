@@ -1,8 +1,22 @@
-import React, { useState } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
-import { supabase } from '../lib/supabase';
+import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { supabase } from '@/lib/supabase';
 import { Upload } from 'lucide-react';
+
+// Dynamically import ReactQuill with SSR disabled
+const ReactQuill = dynamic(() => import('react-quill'), {
+  ssr: false,
+  loading: () => <p>Loading editor...</p>
+});
+
+// Import the CSS only on the client side
+const QuillCSS = () => {
+  useEffect(() => {
+    // This code only runs on the client
+    import('react-quill/dist/quill.snow.css');
+  }, []);
+  return null;
+};
 
 interface ArticleEditorProps {
   onClose: () => void;
@@ -113,6 +127,8 @@ const ArticleEditor: React.FC<ArticleEditorProps> = ({ onClose, editArticle }) =
   };
 
   return (
+    <>
+      <QuillCSS />
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
@@ -207,6 +223,7 @@ const ArticleEditor: React.FC<ArticleEditorProps> = ({ onClose, editArticle }) =
         </div>
       </div>
     </div>
+    </>
   );
 };
 

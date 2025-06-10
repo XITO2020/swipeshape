@@ -1,12 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
-import { createClient } from '@supabase/supabase-js';
 import { executeQuery } from '../db';
-
-// Configuration de Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -59,30 +53,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // 1. Récupérer les informations de l'utilisateur
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id, email')
-      .eq('id', userId)
-      .single();
+    const { data: users, error: userError } = await executeQuery(
+      'SELECT id, email FROM users WHERE id = $1 LIMIT 1',
+      [userId]
+    );
 
-    if (userError || !user) {
+    if (userError || !users || users.length === 0) {
       console.error('Erreur utilisateur:', userError);
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
+    
+    const user = users[0];
 
     // 2. Vérifier si l'utilisateur a effectué l'achat nécessaire
-    let purchaseQuery = supabase
-      .from('purchases')
-      .select('id, program_id')
-      .eq('user_id', userId)
-      .eq('status', 'completed');
+    let purchaseQuerySql = `
+      SELECT id, program_id 
+      FROM purchases 
+      WHERE user_id = $1 AND status = 'completed'
+    `;
+    let queryParams = [userId];
       
     // Si programId est fourni, vérifier spécifiquement cet achat
     if (shouldCheckProgramId) {
-      purchaseQuery = purchaseQuery.eq('program_id', programId);
+      purchaseQuerySql += ` AND program_id = $2`;
+      queryParams.push(programId);
     }
     
-    const { data: purchases, error: purchasesError } = await purchaseQuery;
+    const { data: purchases, error: purchasesError } = await executeQuery(purchaseQuerySql, queryParams);
 
     if (purchasesError) {
       console.error('Erreur vérification achats:', purchasesError);
@@ -104,38 +101,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 3. Vérifier que l'article existe
-    const { data: article, error: articleError } = await supabase
-      .from('articles')
-      .select('id')
-      .eq('id', articleId)
-      .single();
+    const { data: articles, error: articleError } = await executeQuery(
+      'SELECT id FROM articles WHERE id = $1 LIMIT 1',
+      [articleId]
+    );
 
-    if (articleError || !article) {
+    if (articleError || !articles || articles.length === 0) {
       console.error('Erreur article:', articleError);
       return res.status(404).json({ error: 'Article non trouvé' });
     }
+    
+    const article = articles[0];
 
     // 4. Créer le commentaire
-    const { data: comment, error: commentError } = await supabase
-      .from('comments')
-      .insert([
-        {
-          content,
-          article_id: articleId,
-          user_id: userId,
-          created_at: new Date().toISOString()
-        }
-      ])
-      .select()
-      .single();
+    const currentDate = new Date().toISOString();
+    const { data: newComment, error: commentError } = await executeQuery(
+      `INSERT INTO comments (content, article_id, user_id, created_at) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING id, content, article_id, user_id, created_at`,
+      [content, articleId, userId, currentDate]
+    );
 
-    if (commentError) {
+    if (commentError || !newComment || newComment.length === 0) {
       console.error('Erreur création commentaire:', commentError);
-      return res.status(500).json({ error: 'Erreur lors de la création du commentaire' });
+      return res.status(500).json({ 
+        error: 'Erreur lors de la création du commentaire',
+        details: commentError instanceof Error ? commentError.message : String(commentError)
+      });
     }
 
     // 5. Retourner le commentaire créé
-    return res.status(201).json({ comment });
+    return res.status(201).json({ comment: newComment[0] });
   } catch (error) {
     console.error('Erreur lors de l\'ajout du commentaire:', error);
     return res.status(500).json({ error: 'Erreur serveur' });

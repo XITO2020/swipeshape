@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, MapPin, Clock } from 'lucide-react';
-import ContentFilter from '../components/ContentFilter';
+import ContentFilter from '@/components/ContentFilter';
 import axios from 'axios';
+
+// Server-side data fetching
+export async function getServerSideProps() {
+  try {
+    // Fetch events on the server side
+    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/events`);
+    return { props: { initialEvents: response.data || [] } };
+  } catch (err) {
+    console.error('Exception in getServerSideProps for events:', err);
+    return { props: { initialEvents: [] } };
+  }
+}
 
 interface Event {
   id: string;
@@ -12,9 +24,13 @@ interface Event {
   image_url?: string;
 }
 
-const EventsPage: React.FC = () => {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+interface EventsPageProps {
+  initialEvents?: Event[];
+}
+
+const EventsPage: React.FC<EventsPageProps> = ({ initialEvents = [] }) => {
+  const [events, setEvents] = useState<Event[]>(initialEvents);
+  const [isLoading, setIsLoading] = useState(!initialEvents?.length);
   const [error, setError] = useState<string | null>(null);
 
   const fetchEvents = async (query: string = '', date: Date | null = null) => {
@@ -40,8 +56,14 @@ const EventsPage: React.FC = () => {
   };
 
   useEffect(() => {
+    // Skip fetching if we already have events from server-side props
+    if (initialEvents.length > 0) {
+      console.log('Using server-side fetched events:', initialEvents.length);
+      return;
+    }
+    
     fetchEvents();
-  }, []);
+  }, [initialEvents.length]);
 
   const handleSearch = (query: string) => {
     fetchEvents(query);

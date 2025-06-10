@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { Program, Article, Comment, Event, User, Video, Test, TestQuestion, UserTestResult } from '../types';
-import { mockArticles, mockEvents, mockPrograms, mockUsers, mockVideos, mockTests, mockTestQuestions, mockUserTestResults } from './mockData';
+import { Program, Article, Comment, Event, User, Video, Test, TestQuestion, UserTestResult } from '@/types';
+import { mockArticles, mockEvents, mockPrograms, mockUsers, mockVideos, mockTests, mockTestQuestions, mockUserTestResults } from '@/lib/mockData';
 
 // Flag to control whether to use mock data
 const USE_MOCK_DATA = false;
@@ -26,17 +26,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 console.log('Client Supabase initialisé');
 
 // Test de connexion au chargement pour vérifier si tout fonctionne
-if (typeof window !== 'undefined') {
-  // On exécute ce code uniquement côté client
-  supabase.from('programs').select('count')
-    .then(({ data, error }) => {
-      if (error) {
-        console.error('Erreur lors du test de connexion Supabase:', error);
-      } else {
-        console.log('Test de connexion Supabase réussi');
-      }
-    });
-}
+// Note: Suppression du test côté client pour éviter les erreurs CORS
+// Si vous avez besoin de vérifier la connexion, faites-le à travers une API route Next.js
+// comme /api/test-supabase-connection qui fera l'appel côté serveur
 
 // Helper function to log and handle errors consistently
 const handleSupabaseError = (error: any, context: string) => {
@@ -44,26 +36,114 @@ const handleSupabaseError = (error: any, context: string) => {
   return { data: null, error };
 };
 
-// Auth functions
-export const signUp = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-  return { data, error };
+// Auth functions - using server API route to avoid CORS issues
+export const signUp = async (email: string, password: string, userData = {}) => {
+  try {
+    console.log('Client: Sending signup request to API route');
+    // Simplifier la structure des options pour éviter les imbrications inutiles
+    const response = await fetch('/api/auth/supabase-auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'signUp',
+        email,
+        password,
+        // Passer directement les données utilisateur comme options.data
+        options: {
+          data: userData
+        }
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Server returned error:', errorData);
+      return { data: null, error: errorData.error || 'Server error' };
+    }
+    
+    const result = await response.json();
+    console.log('Client: Signup result:', result);
+    
+    // Vérification explicite des données de réponse
+    if (result.error) {
+      console.error('Error from API route:', result.error);
+      return { data: null, error: result.error };
+    }
+    
+    if (!result.data?.user) {
+      console.error('Invalid response format:', result);
+      return { data: null, error: { message: 'Invalid response format' } };
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Sign up error:', error);
+    return { data: null, error };
+  }
 };
 
 export const signIn = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  return { data, error };
+  try {
+    console.log('Client: Sending signin request to API route');
+    const response = await fetch('/api/auth/supabase-auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'signIn',
+        email,
+        password
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Server returned error:', errorData);
+      return { data: null, error: errorData.error || 'Server error' };
+    }
+    
+    const result = await response.json();
+    console.log('Client: Signin result:', result);
+    
+    // Vérification explicite des données de réponse
+    if (!result.data?.user) {
+      console.error('Invalid response format:', result);
+      return { data: null, error: { message: 'Invalid response format' } };
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Sign in error:', error);
+    return { data: null, error };
+  }
 };
 
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  return { error };
+  try {
+    const response = await fetch('/api/auth/supabase-auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'signOut'
+      }),
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      return { error: new Error(result.error || 'Erreur lors de la déconnexion') };
+    }
+
+    return { error: null };
+  } catch (error) {
+    console.error('Signout error:', error);
+    return { error };
+  }
 };
 
 export const getCurrentUser = async () => {
@@ -553,21 +633,47 @@ export const searchEvents = async (query: string = '', date: Date | null = null)
 
 // Comments functions
 export const getComments = async () => {
-  const { data, error } = await supabase
-    .from('comments')
-    .select('*')
-    .order('created_at', { ascending: false });
+  // Log for debugging
+  console.log('getComments() appelé - URL Supabase:', supabaseUrl);
   
-  // Convert IPFS CIDs to gateway URLs for avatars
-  if (data) {
-    data.forEach(comment => {
-      if (comment.avatar_url) {
-        // URLs from Supabase Storage are already complete URLs
-      }
-    });
+  if (USE_MOCK_DATA) {
+    console.log('Attention: Mock data not implemented for comments. Fetching from database...');
   }
-  
-  return { data, error };
+
+  try {
+    console.log('Fetching comments from Supabase...');
+    console.log('Tentative de récupération des commentaires depuis Supabase...');
+    
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    console.log('Réponse Supabase commentaires:', { error, count: data?.length });
+    if (error) console.error('Erreur Supabase commentaires détaillée:', error);
+
+    if (error) {
+      console.error('Supabase returned an error fetching comments:', error);
+      throw error;
+    }
+
+    console.log(`Successfully fetched ${data?.length || 0} comments`);
+    
+    // Process avatar URLs if needed
+    if (data) {
+      data.forEach(comment => {
+        if (comment.avatar_url) {
+          // URLs from Supabase Storage are already complete URLs
+          console.log('Comment has avatar URL:', comment.avatar_url.substring(0, 30) + '...');
+        }
+      });
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error in getComments():', error);
+    return { data: [], error };
+  }
 };
 
 export const createComment = async (comment: Omit<Comment, 'id' | 'created_at'>) => {

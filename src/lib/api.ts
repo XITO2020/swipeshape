@@ -12,9 +12,12 @@ const api = axios.create({
 // Request interceptor to add authentication token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Vérifier si on est côté client avant d'accéder à localStorage
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -31,7 +34,8 @@ api.interceptors.response.use(
     // Redirect to login if unauthorized
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        localStorage.removeItem('token');
+        // S'assurer qu'on est côté client avant d'accéder à localStorage
+        window.localStorage.removeItem('token');
         // Utiliser Router.push au lieu de window.location.href pour les redirections
         const callbackUrl = encodeURIComponent(window.location.pathname);
         // Naviguer de façon sécurisée
