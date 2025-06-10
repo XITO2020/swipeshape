@@ -37,11 +37,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Configuration serveur incomplète' });
     }
 
-    // Vérification que l'URL contient bien db.
-    if (!supabaseUrl.includes('db.')) {
-      console.warn('ATTENTION: L\'URL Supabase ne contient pas le préfixe db., cela peut causer des problèmes');
-    }
-
     // Afficher les informations de débogage (sans exposer la clé complète)
     console.log(`URL: ${supabaseUrl}`);
     console.log(`ServiceKey (début): ${supabaseServiceKey.substring(0, 15)}...`);
