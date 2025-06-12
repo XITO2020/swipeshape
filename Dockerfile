@@ -1,21 +1,21 @@
 # Étape de build
-FROM node:18-slim AS builder
+FROM node:18-bullseye-slim AS builder
 WORKDIR /app
 COPY . .
 RUN npm install
 RUN npm run build
 
 # Étape de production
-FROM node:18-slim
+FROM node:18-bullseye-slim
 WORKDIR /app
 
 COPY --from=builder /app ./
 ENV NODE_ENV=production
 
-# Installer la compatibilité OpenSSL 1.1 + libs C++ avec apt
+# Installer openssl (qui apporte libssl1.1 sur Bullseye)
 RUN apt-get update \
-&& apt-get install -y libssl1.1 libstdc++ \
-&& rm -rf /var/lib/apt/lists/*
+ && apt-get install -y openssl libstdc++ \
+ && rm -rf /var/lib/apt/lists/*
 
 EXPOSE 3000
 
