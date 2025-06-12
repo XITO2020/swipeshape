@@ -3,10 +3,15 @@
 FROM node:18-bullseye-slim AS builder
 WORKDIR /app
 
-# Installer OpenSSL 1.1 et le runtime C++
-RUN apt-get update \
- && apt-get install -y openssl libstdc++6 \
- && rm -rf /var/lib/apt/lists/*
+# Installer OpenSSL 1.1 et le runtime C++ avec tentatives multiples en cas d'échec réseau
+RUN apt-get update && \
+    # Retry logic for apt-get install
+    for i in 1 2 3 4 5; do \
+        apt-get install -y openssl libstdc++6 && break || \
+        echo "Retry apt-get install attempt $i..." && sleep 2; \
+    done && \
+    # Clean up
+    rm -rf /var/lib/apt/lists/*
 
 # Copier d'abord les fichiers Prisma pour éviter l'erreur de génération
 COPY prisma ./prisma/
@@ -30,10 +35,15 @@ COPY --from=builder /app ./
 # Variables d'env de prod
 ENV NODE_ENV=production
 
-# Réinstaller OpenSSL & C++ runtime pour que Prisma puisse charger ses engines
-RUN apt-get update \
- && apt-get install -y openssl libstdc++6 \
- && rm -rf /var/lib/apt/lists/*
+# Réinstaller OpenSSL & C++ runtime pour que Prisma puisse charger ses engines avec retry
+RUN apt-get update && \
+    # Retry logic for apt-get install
+    for i in 1 2 3 4 5; do \
+        apt-get install -y openssl libstdc++6 && break || \
+        echo "Retry apt-get install attempt $i..." && sleep 2; \
+    done && \
+    # Clean up
+    rm -rf /var/lib/apt/lists/*
 
 # Port exposé
 EXPOSE 3000
