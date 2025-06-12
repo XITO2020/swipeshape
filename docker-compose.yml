@@ -1,17 +1,20 @@
-
 version: '3.8'
 
 services:
   swipeshape:
     build: .
+    restart: always
     ports:
-      - "8080:3000"
+      - "8080:3000"       # exposer 3000 du container sur 8080 de la VM
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - MAILGUN_API_KEY=${MAILGUN_API_KEY}
-      - MAILGUN_DOMAIN=${MAILGUN_DOMAIN}
-      - MAILGUN_FROM=${MAILGUN_FROM}
-      - NODE_ENV=production
+      DATABASE_URL: ${DATABASE_URL}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      MAILGUN_API_KEY: ${MAILGUN_API_KEY}
+      MAILGUN_DOMAIN: ${MAILGUN_DOMAIN}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      NODE_ENV: production
     depends_on:
       - postgres
 
