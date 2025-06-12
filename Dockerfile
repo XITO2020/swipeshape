@@ -9,13 +9,10 @@ RUN npm run build
 FROM node:18-slim
 WORKDIR /app
 
-# Add OpenSSL 1.1 compatibility for Prisma
-RUN apk add --no-cache openssl1.1-compat libgcc libstdc++
-
 COPY --from=builder /app ./
 ENV NODE_ENV=production
 
-# Installer la lib SSL 1.1 et C++ runtime
+# Installer la compatibilité OpenSSL 1.1 + libs C++ avec apt
 RUN apt-get update \
 && apt-get install -y libssl1.1 libstdc++ \
 && rm -rf /var/lib/apt/lists/*
