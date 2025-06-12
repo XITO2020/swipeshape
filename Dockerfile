@@ -8,11 +8,14 @@ RUN apt-get update \
  && apt-get install -y openssl libstdc++6 \
  && rm -rf /var/lib/apt/lists/*
 
-# Installer les dépendances et générer le client Prisma
+# Copier d'abord les fichiers Prisma pour éviter l'erreur de génération
+COPY prisma ./prisma/
+
+# Puis les dépendances
 COPY package.json package-lock.json ./
 RUN npm install
 
-# Copier le code et builder Next.js
+# Copier le reste du code et builder Next.js
 COPY . .
 RUN npm run build
 
