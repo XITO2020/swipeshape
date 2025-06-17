@@ -4,8 +4,8 @@ services:
   swipeshape:
     build: .
     restart: always
-    ports:
-      - "8080:3000"       # exposer 3000 du container sur 8080 de la VM
+    networks:
+      - coolify   
     environment:
       DATABASE_URL: ${DATABASE_URL}
       SUPABASE_URL: ${SUPABASE_URL}
