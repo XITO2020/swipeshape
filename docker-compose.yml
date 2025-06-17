@@ -4,6 +4,11 @@ services:
   swipeshape:
     build: .
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     networks:
       - coolify
     environment:
