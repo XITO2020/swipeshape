@@ -9,8 +9,10 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    ports:
+      - "8080:3000" 
     networks:
-      - coolify
+      - coolify_network
     environment:
       DATABASE_URL: ${DATABASE_URL}
       SUPABASE_URL: ${SUPABASE_URL}
