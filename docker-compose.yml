@@ -1,33 +1,21 @@
 version: '3.8'
-
 services:
   swipeshape:
     build: .
-    restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+    ports:
+      - "8080:3000"  # Gardez cette ligne
+    # Supprimez networks: (Coolify gère ça)
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      # ... (autres variables)
+    healthcheck:  # ✅ Gardez ceci
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
       timeout: 5s
       retries: 3
-    ports:
-      - "8080:3000" 
-    networks:
-      - coolify_network
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      SUPABASE_URL: ${SUPABASE_URL}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      MAILGUN_API_KEY: ${MAILGUN_API_KEY}
-      MAILGUN_DOMAIN: ${MAILGUN_DOMAIN}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
-      NODE_ENV: production
-    depends_on:
-      - postgres
 
   postgres:
     image: postgres:15-alpine
-    restart: always
     environment:
       POSTGRES_DB: swipeshape
       POSTGRES_USER: admin
