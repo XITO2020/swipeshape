@@ -13,15 +13,3 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: swipeshape
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: securepassword
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-volumes:
-  pgdata:
