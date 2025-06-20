@@ -1,9 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { buffer } from 'micro';
-import { executeQuery } from '../db';
-import { sendProgramPurchaseEmail } from '../../../lib/sendProgramPurchaseEmail';
+import { supabase } from '../../../lib/supabase';
 import { nanoid } from 'nanoid';
+import { sendEmail } from '../../../utils/emails/brevo';
 
 // Configurer Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2022-11-15' });
@@ -76,13 +76,14 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     }
 
     // 2. Récupérer les informations du programme
-    const { data: program, error: programError } = await executeQuery(
-      'SELECT * FROM programs WHERE id = $1',
-      [programId]
-    );
-
-    if (programError || !program || program.length === 0) {
-      throw new Error(`Programme ${programId} introuvable`);
+    const { data: program, error: programError } = await supabase
+      .from('programs')
+      .select('*')
+      .eq('id', programId)
+      .single();
+    
+    if (programError || !program) {
+      throw new Error(`Programme ${programId} introuvable: ${programError?.message || 'Erreur inconnue'}`);
     }
 
     // 3. Générer un token de téléchargement unique
@@ -91,35 +92,76 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     expiresAt.setDate(expiresAt.getDate() + 7); // Expire après 7 jours
     
     // 4. Enregistrer l'achat dans la base de données
-    const { data: purchase, error: purchaseError } = await executeQuery(
-      `INSERT INTO purchases 
-       (user_email, program_id, payment_status, payment_intent_id, download_token, expires_at, download_count) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) 
-       RETURNING id`,
-      [
-        userEmail, 
-        programId, 
-        'completed', 
-        session.payment_intent as string, 
-        downloadToken, 
-        expiresAt.toISOString(),
-        0 // Nombre initial de téléchargements
-      ]
-    );
-
+    const { data: purchase, error: purchaseError } = await supabase
+      .from('purchases')
+      .insert({
+        user_email: userEmail,
+        program_id: programId,
+        payment_status: 'completed',
+        payment_intent_id: session.payment_intent as string,
+        download_token: downloadToken,
+        expires_at: expiresAt.toISOString(),
+        download_count: 0
+      })
+      .select('id')
+      .single();
+      
     if (purchaseError) {
-      throw new Error(`Erreur lors de l'enregistrement de l'achat: ${purchaseError}`);
+      throw new Error(`Erreur lors de l'enregistrement de l'achat: ${purchaseError.message}`);
     }
 
-    // 5. Construire l'URL de téléchargement
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-    const downloadUrl = `${baseUrl}/api/download/${downloadToken}`;
+    // 5. Récupérer l'utilisateur par email
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, first_name, last_name, email')
+      .eq('email', userEmail)
+      .single();
 
-    // 6. Envoyer l'email avec le PDF
-    await sendProgramPurchaseEmail(
+    const userName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : userEmail.split('@')[0];
+    
+    // 6. Construire l'URL de téléchargement
+    const downloadUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/download/${downloadToken}`;
+    
+    // 7. Envoyer un email de confirmation avec les détails de l'achat
+    const htmlContent = `
+      <h1>Votre programme SwipeShape</h1>
+      <p>Bonjour ${userName},</p>
+      <p>Merci pour votre achat du programme <strong>${program.name}</strong>.</p>
+      <p>${program.description || ''}</p>
+      <p>Vous pouvez télécharger votre programme en cliquant sur ce lien:</p>
+      <p><a href="${downloadUrl}" style="padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">Télécharger votre programme</a></p>
+      <p>Ce lien expirera dans 7 jours, assurez-vous de télécharger votre programme avant.</p>
+      <p>Cordialement,<br>L'équipe SwipeShape</p>
+    `;
+    
+    const textContent = `
+      Votre programme SwipeShape
+      
+      Bonjour ${userName},
+      
+      Merci pour votre achat du programme ${program.name}.
+      
+      Vous pouvez télécharger votre programme en visitant ce lien:
+      ${downloadUrl}
+      
+      Ce lien expirera dans 7 jours, assurez-vous de télécharger votre programme avant.
+      
+      Cordialement,
+      L'équipe SwipeShape
+    `;
+    
+    await sendEmail(
       userEmail,
-      program[0].name,
-      downloadUrl
+      `Votre programme: ${program.name}`,
+      htmlContent,
+      textContent,
+      'SwipeShape',
+      process.env.BREVO_FROM_EMAIL || 'no-reply@swipeshape.com',
+      { 
+        userName: userName,
+        programName: program.name,
+        downloadUrl: downloadUrl
+      }
     );
 
     console.log(`Achat traité avec succès pour ${userEmail}, programme ${programId}`);

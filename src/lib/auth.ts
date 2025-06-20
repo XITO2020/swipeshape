@@ -85,3 +85,15 @@ export const generateAuthToken = (userId: string, email: string, isAdmin: boolea
     { expiresIn: '7d' } // Expire après 7 jours
   );
 };
+
+// Middleware pour vérifier que l'utilisateur est admin et renvoyer une erreur si besoin
+export const requireAdmin = async (req: NextApiRequest, res: any) => {
+  const adminUser = await verifyAuthAdmin(req);
+  
+  if (!adminUser) {
+    res.status(401).json({ error: 'Non autorisé: Droits administrateur requis' });
+    return null;
+  }
+  
+  return adminUser;
+};

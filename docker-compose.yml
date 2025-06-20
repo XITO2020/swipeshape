@@ -3,12 +3,12 @@ services:
   swipeshape:
     build: .
     ports:
-      - "8080:3000"  # Gardez cette ligne
-    # Supprimez networks: (Coolify gère ça)
+      - "8080:3000" 
+  
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      # ... (autres variables)
-    healthcheck:  # ✅ Gardez ceci
+
+    healthcheck:  
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
       timeout: 5s

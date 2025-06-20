@@ -26,23 +26,43 @@ Ce que fait ce fichier /pages/download/[token].tsx :
 
 // pages/download/[token].tsx
 import { GetServerSideProps } from "next";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { add } from "date-fns";
 
 export const getServerSideProps: GetServerSideProps = async ({ params, res }) => {
   const token = params?.token as string;
 
-  const purchase = await prisma.purchase.findUnique({
-    where: { downloadToken: token },
-    include: { program: true },
-  });
+  // Récupérer l'achat avec le token de téléchargement
+  const { data: purchase, error: purchaseError } = await supabase
+    .from('purchases')
+    .select(`
+      id,
+      download_token,
+      expires_at,
+      download_count,
+      program_id
+    `)
+    .eq('download_token', token)
+    .single();
+    
+  // Si l'achat est trouvé, récupérer le programme associé
+  let programDetails = null;
+  if (purchase) {
+    const { data: program } = await supabase
+      .from('programs')
+      .select('id, name, download_url')
+      .eq('id', purchase.program_id)
+      .single();
+      
+    programDetails = program;
+  }
 
-  if (!purchase) {
+  if (purchaseError || !purchase) {
     return { notFound: true };
   }
 
-  const isExpired = new Date() > purchase.expiresAt;
-  const tooManyDownloads = purchase.downloadCount >= 2;
+  const isExpired = new Date() > new Date(purchase.expires_at);
+  const tooManyDownloads = purchase.download_count >= 2;
 
   if (isExpired || tooManyDownloads) {
     return {
@@ -52,18 +72,35 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
     };
   }
 
-  await prisma.purchase.update({
-    where: { id: purchase.id },
-    data: {
-      downloadCount: { increment: 1 },
-    },
-  });
+  // Incrémenter le compteur de téléchargements
+  const { error: updateError } = await supabase
+    .from('purchases')
+    .update({ download_count: purchase.download_count + 1 })
+    .eq('id', purchase.id);
 
-  // Redirection vers le PDF
-  res.writeHead(302, {
-    Location: purchase.program.fileUrl,
-  });
-  res.end();
+  if (updateError) {
+    console.error('Erreur lors de la mise à jour du compteur de téléchargement:', updateError);
+    return {
+      props: {
+        error: "Erreur lors du téléchargement. Veuillez réessayer.",
+      },
+    };
+  }
+
+  // Redirection vers le PDF/fichier du programme
+  if (programDetails?.download_url) {
+    res.writeHead(302, {
+      Location: programDetails.download_url,
+    });
+    res.end();
+  } else {
+    return {
+      props: {
+        error: "Le fichier du programme est introuvable.",
+        programId: purchase.program_id,
+      },
+    };
+  }
 
   return { props: {} }; // Ne s'affichera jamais grâce à la redirection
 };
