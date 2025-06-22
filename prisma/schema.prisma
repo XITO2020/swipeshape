@@ -365,3 +365,16 @@ enum one_time_token_type {
 
   @@schema("auth")
 }
+
+// Modèle pour les logs de test en préproduction
+model test_logs {
+  id          String    @id @default(uuid())
+  action      String    // Format: action_entity (ex: create_articles)
+  details     String    // JSON.stringify des données
+  timestamp   DateTime  @default(now())
+  status      String    // pending, completed, error
+  result_id   String?   // ID du résultat si l'opération a réussi
+  
+  @@index([action, status])
+  @@schema("public")
+}
