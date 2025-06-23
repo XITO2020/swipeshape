@@ -1,4 +1,4 @@
-import { addContactToList } from './brevo';
+import { addContactToList } from './emailUtils';
 import { sendWelcomeEmail } from './sendWelcomeEmail';
 
 export async function subscribeToNewsletter(email: string) {
@@ -7,9 +7,9 @@ export async function subscribeToNewsletter(email: string) {
     throw new Error("Email invalide");
   }
   
-  // 2. Ajouter à la liste Brevo
-  // Utiliser l'ID de liste Brevo défini dans l'environnement ou une valeur par défaut
-  const listId = process.env.BREVO_NEWSLETTER_LIST_ID ? parseInt(process.env.BREVO_NEWSLETTER_LIST_ID) : undefined;
+  // 2. Ajouter à la liste des abonnés via notre service newsletter
+  // La variable listId est maintenue pour compatibilité mais n'est plus nécessaire avec notre implémentation
+  const listId = process.env.NEWSLETTER_LIST_ID ? parseInt(process.env.NEWSLETTER_LIST_ID) : undefined;
   
   await addContactToList(email, listId, {
     NEWSLETTER_CONSENT: true,

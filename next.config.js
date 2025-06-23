@@ -38,6 +38,12 @@ const nextConfig = {
   },
   // Ignorer les erreurs de module manquant pendant le build
   webpack: (config, { isServer, dev }) => {
+    // Exclure le dossier api_backup de la compilation
+    config.module.rules.push({
+      test: /[\\/]src[\\/]pages[\\/]api_backup[\\/].*$/,
+      loader: 'ignore-loader',
+    });
+
     // SOLUTION TEMPORAIRE: Simuler l'existence des modules manquants
     if (!isServer) {
       config.resolve.fallback = {
@@ -48,6 +54,9 @@ const nextConfig = {
         'react-quill': require.resolve('./src/mockModules/empty-module.js')
       };
     }
+
+    // Aucune configuration spécifique pour les imports non-relatifs n'est nécessaire
+    // puisque nous utilisons nodemailer qui a un système d'imports standard
     return config;
   },
 };

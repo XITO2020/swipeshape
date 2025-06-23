@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { getProgram } from './supabase';
 
 // Initialisation de Stripe avec la clé secrète
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2023-10-16" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2022-11-15" });
 
 /**
  * Crée une session de paiement Stripe pour l'achat d'un programme

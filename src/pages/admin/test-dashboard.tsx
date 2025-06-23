@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
 
 // Types pour les tests
 type EntityType = 'articles' | 'programs' | 'purchases' | 'users' | 'comments' | 'videos' | 'events' | 'newsletter';
@@ -56,6 +57,20 @@ const defaultFormData: Record<EntityType, any> = {
 };
 
 export default function TestDashboard() {
+  // Intercepteur Axios pour simuler un délai réseau (utile pour voir les états de chargement)
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      async response => {
+        // Simuler un délai de 300ms pour toutes les réponses
+        await new Promise(resolve => setTimeout(resolve, 300));
+        return response;
+      }
+    );
+    
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, []);
   const router = useRouter();
   const [apiKey, setApiKey] = useState('TEST_ADMIN_KEY_FOR_PREPRODUCTION');
   const [entity, setEntity] = useState<EntityType>('articles');
@@ -81,7 +96,7 @@ export default function TestDashboard() {
       const res = await axios.get('/api/admin/test-logs', {
         headers: { 'X-API-Key': apiKey }
       });
-      setLogs(res.data.logs || []);
+      setLogs(res.data.data || []);
     } catch (error) {
       console.error('Erreur lors de la récupération des logs:', error);
     }
@@ -89,7 +104,7 @@ export default function TestDashboard() {
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev: Record<string, any>) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -123,9 +138,77 @@ export default function TestDashboard() {
     }
   };
 
+  // Fonction pour nettoyer toutes les données de test
+  const clearTestData = async () => {
+    if (!confirm("Voulez-vous vraiment supprimer toutes les données de test?")) return;
+    
+    setLoading(true);
+    try {
+      const res = await axios.post('/api/admin/test-crud', {
+        entity: 'system',
+        action: 'clear',
+      }, {
+        headers: { 'X-API-Key': apiKey }
+      });
+      
+      setResponse(res.data);
+      setTimeout(fetchLogs, 1000);
+      alert("Toutes les données de test ont été supprimées.");
+    } catch (error: any) {
+      setResponse({ error: error.response?.data || 'Une erreur est survenue lors du nettoyage' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fonction pour exporter les résultats des tests
+  const exportTestResults = () => {
+    // Préparer les données à exporter
+    const exportData = {
+      logs: logs,
+      lastTestResult: response,
+      testEnvironment: {
+        date: new Date().toISOString(),
+        entity,
+        action
+      }
+    };
+    
+    // Créer un blob et un lien de téléchargement
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    // Créer un élément <a> pour télécharger le fichier
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `test-results-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+  };
+  
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Dashboard de Test CRUD - Préproduction</h1>
+      <Head>
+        <title>Dashboard de Test CRUD - Préproduction</title>
+      </Head>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Dashboard de Test CRUD - Préproduction</h1>
+        <div className="space-x-2">
+          <button 
+            onClick={clearTestData}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            disabled={loading}
+          >
+            Nettoyer les données
+          </button>
+          <button 
+            onClick={exportTestResults}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+          >
+            Exporter les résultats
+          </button>
+        </div>
+      </div>
       
       {/* Formulaire de test */}
       <div className="bg-white p-6 rounded shadow-md mb-8">
@@ -252,7 +335,21 @@ export default function TestDashboard() {
                     <td className="py-2 px-3">{log.action}</td>
                     <td className={`py-2 px-3 ${getStatusClass(log.status)}`}>{log.status}</td>
                     <td className="py-2 px-3">{new Date(log.timestamp).toLocaleString()}</td>
-                    <td className="py-2 px-3">{log.result_id || '-'}</td>
+                    <td className="py-2 px-3">
+                      {log.result_id ? (
+                        <button
+                          className="text-blue-600 hover:underline"
+                          onClick={() => {
+                            const [model, _] = log.action.split('_');
+                            setEntity(model as EntityType);
+                            setAction('read');
+                            setId(log.result_id);
+                          }}
+                        >
+                          {log.result_id}
+                        </button>
+                      ) : '-'}
+                    </td>
                   </tr>
                 ))
               ) : (

@@ -1,78 +1,55 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import { NextResponse } from 'next/server';
 
-// Map pour stocker le timestamp de la dernière requête par IP/route
+/**
+ * Injecte les en-têtes CORS sur une NextResponse
+ */
+export function withApiMiddleware(response: NextResponse): NextResponse {
+  const origin =
+    process.env.NODE_ENV === 'development'
+      ? '*' 
+      : process.env.NEXT_PUBLIC_APP_URL || '';
+
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'Access-Control-Allow-Credentials': 'true'
+  };
+
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    response.headers.set(key, value);
+  }
+  return response;
+}
+
+/**
+ * Retourne une erreur JSON formatée + CORS
+ */
+export function handleApiError(
+  message: string,
+  status: number = 500
+): NextResponse {
+  const res = NextResponse.json({ error: message }, { status });
+  return withApiMiddleware(res);
+}
+
+// Map pour limiter le nombre de requêtes par IP+URL
 const lastRequestMap = new Map<string, number>();
 
-// Délai minimum entre les requêtes en ms (100ms)
-const MIN_REQUEST_INTERVAL = 100;
-
 /**
- * Middleware pour limiter la fréquence des appels API
- * Cela empêche les re-renderings infinis de surcharger la base de données
- * tout en préservant la fonctionnalité normale pour les utilisateurs réels
+ * Renvoie true si la requête doit être throttlée
  */
 export function throttleApiRequests(
-  handler: (req: NextApiRequest, res: NextApiResponse) => Promise<void | NextApiResponse>
-) {
-  return async (req: NextApiRequest, res: NextApiResponse) => {
-    // Créer une clé unique pour cette combinaison IP/route
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-    const path = req.url || '';
-    const key = `${ip}-${path}`;
-    
-    const now = Date.now();
-    const lastRequest = lastRequestMap.get(key) || 0;
-    
-    // Si la requête arrive trop tôt après la précédente
-    if (now - lastRequest < MIN_REQUEST_INTERVAL) {
-      // Retourner immédiatement les dernières données mises en cache si disponibles
-      // Au lieu de renvoyer une erreur qui pourrait perturber l'UX
-      // Simplement indiquer dans les en-têtes que la requête a été limitée
-      res.setHeader('X-Throttled', 'true');
-      
-      // Si c'est une requête GET (lecture seule), on peut quand même l'exécuter
-      // mais à fréquence limitée pour éviter la surcharge
-      if (req.method !== 'GET') {
-        return res.status(429).json({
-          message: 'Trop de requêtes. Veuillez réessayer dans quelques instants.',
-          throttled: true
-        });
-      }
-    }
-    
-    // Mettre à jour le timestamp de la dernière requête
-    lastRequestMap.set(key, now);
-    
-    // Continuer avec le gestionnaire d'API normal
-    return handler(req, res);
-  };
-}
-
-/**
- * Ajoute des en-têtes CORS standards à toutes les réponses
- */
-export function withCors(handler: (req: NextApiRequest, res: NextApiResponse) => Promise<void | NextApiResponse>) {
-  return async (req: NextApiRequest, res: NextApiResponse) => {
-    // Paramètres CORS
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
-
-    // Préflight OPTIONS
-    if (req.method === 'OPTIONS') {
-      res.status(200).end();
-      return;
-    }
-
-    // Continue normal handler
-    return handler(req, res);
-  };
-}
-
-/**
- * Export combiné pour appliquer plusieurs middleware
- */
-export function withApiMiddleware(handler: (req: NextApiRequest, res: NextApiResponse) => Promise<void | NextApiResponse>) {
-  return withCors(throttleApiRequests(handler));
+  request: Request,
+  windowMs: number = 100
+): boolean {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  const key = `${ip}:${request.url}`;
+  const now = Date.now();
+  const prev = lastRequestMap.get(key) || 0;
+  if (now - prev < windowMs) {
+    return true;
+  }
+  lastRequestMap.set(key, now);
+  return false;
 }

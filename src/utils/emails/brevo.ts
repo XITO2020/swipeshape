@@ -1,21 +1,21 @@
 // src/utils/emails/brevo.ts
-import * as SibApiV3Sdk from '@getbrevo/brevo';
+// Ce fichier est maintenu pour la rétrocompatibilité mais utilise désormais Nodemailer
+// Il fait office de wrapper vers notre nouveau service d'email
 
-// Configuration du client Brevo
-const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-
-// Configurer la clé API
-const apiKey = SibApiV3Sdk.ApiClient.instance.authentications['api-key'];
-apiKey.apiKey = process.env.BREVO_API_KEY || '';
-
-// API contacts pour la gestion des listes et abonnés
-const contactsApi = new SibApiV3Sdk.ContactsApi();
+import { 
+  sendEmail as sendNodemailerEmail,
+  sendWelcomeEmail as sendNodemailerWelcomeEmail,
+  sendPdfEmail,
+  sendNewsletter,
+  EmailOptions
+} from '@/services/email.service';
+import { addSubscriber } from '@/services/newsletter.service';
 
 /**
- * Ajoute un contact à une liste Brevo
+ * Ajoute un contact à la liste des abonnés newsletter
  * @param email - Email du contact
- * @param listId - ID de la liste (optionnel)
- * @param attributes - Attributs additionnels
+ * @param listId - Non utilisé, maintenu pour compatibilité
+ * @param attributes - Attributs additionnels (nom, prénom, etc.)
  */
 export async function addContactToList(
   email: string,
@@ -23,66 +23,67 @@ export async function addContactToList(
   attributes: Record<string, any> = {}
 ) {
   try {
-    const createContact = new SibApiV3Sdk.CreateContact();
-    createContact.email = email;
-    createContact.attributes = attributes;
-    
-    if (listId) {
-      createContact.listIds = [listId];
-    }
-    
-    const response = await contactsApi.createContact(createContact);
-    console.log('Contact ajouté avec succès à Brevo:', response);
+    const name = attributes.firstname || attributes.FIRSTNAME || attributes.name || '';
+    const response = await addSubscriber(email, name);
+    console.log('Contact ajouté avec succès à la newsletter:', response);
     return response;
   } catch (error) {
-    console.error('Erreur lors de l\'ajout du contact à Brevo:', error);
+    console.error('Erreur lors de l\'ajout du contact à la newsletter:', error);
     throw error;
   }
 }
 
 /**
- * Envoie un email via Brevo
- * @param {string} to - Adresse email du destinataire
+ * Envoie un email via Nodemailer
+ * @param {string|string[]} to - Adresse(s) email du/des destinataire(s)
  * @param {string} subject - Sujet de l'email
  * @param {string} htmlContent - Contenu HTML de l'email
  * @param {string} textContent - Contenu texte de l'email
  * @param {string} fromName - Nom de l'expéditeur
  * @param {string} fromEmail - Email de l'expéditeur
  * @param {Record<string, any>} [params] - Paramètres supplémentaires
- * @returns {Promise<any>} - Réponse de l'API Brevo
+ * @returns {Promise<any>} - Résultat de l'envoi
  */
 export async function sendEmail(
-  to: string,
+  to: string | string[],
   subject: string,
   htmlContent: string,
   textContent: string,
   fromName: string = 'SwipeShape',
-  fromEmail: string = process.env.BREVO_FROM_EMAIL || 'no-reply@swipeshape.com',
+  fromEmail: string = process.env.EMAIL_FROM || 'no-reply@swipeshape.com',
   params: Record<string, any> = {}
 ) {
   try {
-    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-
-    sendSmtpEmail.to = Array.isArray(to) 
-      ? to.map(email => ({ email })) 
-      : [{ email: to }];
+    // Formatage du from avec le nom si fourni
+    const from = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
     
-    sendSmtpEmail.subject = subject;
-    sendSmtpEmail.htmlContent = htmlContent;
-    sendSmtpEmail.textContent = textContent;
-    sendSmtpEmail.sender = { name: fromName, email: fromEmail };
-    
-    // Ajouter des tags ou autres paramètres
-    if (params.tags) sendSmtpEmail.tags = params.tags;
-    if (params.attachments) sendSmtpEmail.attachment = params.attachments;
-    if (params.replyTo) sendSmtpEmail.replyTo = params.replyTo;
+    // Conversion des attachments du format Brevo au format Nodemailer
+    const attachments = params.attachments?.map((att: any) => ({
+      filename: att.name,
+      content: Buffer.from(att.content, 'base64')
+    }));
 
-    // Envoyer l'email
-    const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log('Email envoyé avec succès via Brevo:', response);
-    return response;
+    // Appel au service Nodemailer
+    const emailOptions: EmailOptions = {
+      to: Array.isArray(to) 
+        ? to.map(email => ({ email })) 
+        : { email: to },
+      subject,
+      html: htmlContent,
+      text: textContent,
+      from,
+    };
+    
+    if (attachments?.length) {
+      emailOptions.attachments = attachments;
+    }
+    
+    const result = await sendNodemailerEmail(emailOptions);
+    
+    console.log('Email envoyé avec succès via Nodemailer');
+    return result;
   } catch (error) {
-    console.error('Erreur lors de l\'envoi de l\'email via Brevo:', error);
+    console.error('Erreur lors de l\'envoi de l\'email:', error);
     throw error;
   }
 }
@@ -98,28 +99,43 @@ export async function sendEmailWithAttachment(
   attachmentContent: Buffer,
   attachmentName: string,
   fromName: string = 'SwipeShape',
-  fromEmail: string = process.env.BREVO_FROM_EMAIL || 'no-reply@swipeshape.com'
+  fromEmail: string = process.env.EMAIL_FROM || 'no-reply@swipeshape.com'
 ) {
-  const attachments = [{
-    content: attachmentContent.toString('base64'),
-    name: attachmentName
-  }];
-  
-  return sendEmail(
-    to,
-    subject,
-    htmlContent,
-    textContent,
-    fromName,
-    fromEmail,
-    { attachments }
-  );
+  try {
+    const from = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
+    
+    // Utiliser directement notre service PDF email
+    const result = await sendPdfEmail({
+      to: { email: to },
+      subject,
+      html: htmlContent,
+      text: textContent,
+      from,
+      attachments: [{
+        filename: attachmentName,
+        content: attachmentContent
+      }]
+    });
+    
+    console.log('Email avec pièce jointe envoyé avec succès');
+    return result;
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi de l\'email avec pièce jointe:', error);
+    throw error;
+  }
 }
 
+// Exporter aussi les nouvelles fonctions directement du service pour faciliter la migration
+export {
+  sendNodemailerWelcomeEmail,
+  sendPdfEmail,
+  sendNewsletter
+};
+
+// Exporter un objet pour rétrocompatibilité
 export default {
   sendEmail,
   sendEmailWithAttachment,
   addContactToList,
-  apiInstance,
-  contactsApi
+  sendWelcomeEmail: sendNodemailerWelcomeEmail
 };

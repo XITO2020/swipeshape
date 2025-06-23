@@ -1,5 +1,5 @@
 import { generatePDF } from './pdfGenerator';
-import { sendEmail, sendEmailWithAttachment } from './brevoClient';
+import { sendEmail, sendEmailWithAttachment } from './emailClient';
 
 
 export async function sendProgramPurchaseEmail(
@@ -81,7 +81,7 @@ export async function sendProgramPurchaseEmail(
     
     let result;
     
-    // Envoyer l'email via Brevo
+    // Envoyer l'email via Nodemailer
     if (pdfBuffer) {
       // Avec pièce jointe PDF
       result = await sendEmailWithAttachment(
@@ -92,7 +92,7 @@ export async function sendProgramPurchaseEmail(
         pdfBuffer,
         `recu-${programName.toLowerCase().replace(/\s+/g, '-')}.pdf`,
         'SwipeShape',
-        process.env.BREVO_FROM_EMAIL || 'purchase@swipeshape.com'
+        process.env.EMAIL_FROM || 'purchase@swipeshape.com'
       );
     } else {
       // Sans pièce jointe
@@ -102,11 +102,11 @@ export async function sendProgramPurchaseEmail(
         purchaseEmailContent,
         textContent,
         'SwipeShape',
-        process.env.BREVO_FROM_EMAIL || 'purchase@swipeshape.com'
+        process.env.EMAIL_FROM || 'purchase@swipeshape.com'
       );
     }
     
-    console.log('Email d\'achat envoyé avec succès via Brevo:', result);
+    console.log('Email d\'achat envoyé avec succès:', result);
     return true;
   } catch (error) {
     console.error('Erreur lors de l\'envoi de l\'email d\'achat:', error);

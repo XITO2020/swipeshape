@@ -25,11 +25,17 @@
         "src/*"
       ]
     },
-    "incremental": true
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
+    "prisma",
     "src",
-    "prisma"
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
