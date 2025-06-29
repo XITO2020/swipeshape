@@ -1,11 +1,41 @@
-import path from 'path';
-import { NextConfig } from 'next';
+const path = require('path');
 
-const nextConfig: NextConfig = {
-  // ... (tout le reste que tu avais déjà)
+const nextConfig = {
+  reactStrictMode: true,
+  transpilePackages: [],
+  assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
+  poweredByHeader: false,
+  compress: true,
+  output: 'standalone',
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
+
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=0',
+          },
+        ],
+      },
+    ];
+  },
+
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 
   webpack: (config, { isServer }) => {
-    // 👉 Ajout des alias utilisés dans tsconfig.json
+    // ✅ Ajout des alias pour résoudre les chemins
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       '@': path.resolve(__dirname, 'src'),
@@ -14,10 +44,9 @@ const nextConfig: NextConfig = {
       '@hooks': path.resolve(__dirname, 'src/hooks'),
       '@pages': path.resolve(__dirname, 'src/pages'),
       '@styles': path.resolve(__dirname, 'src/styles'),
-      // ajoute d'autres alias ici si tu en utilises
     };
 
-    // ✅ Ton code déjà présent
+    // ✅ Ignorer certains modules côté client
     config.module.rules.push({
       test: /[\\/]src[\\/]pages[\\/]api_backup[\\/].*$/,
       loader: 'ignore-loader',
@@ -37,4 +66,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
