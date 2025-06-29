@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '../../../db';
-import { withAdminAuthApp } from '@/lib/admin-middleware-app';
+import { withAdminAuthApp } from '../../../../../lib/admin-middleware-app';
 import PDFDocument from 'pdfkit';
-import { sendPdfEmail, EmailOptions } from '@/services/email.service';
+import { sendPdfEmail, EmailOptions } from '../../../../../services/email.service';
 
 /**
  * Gestion des requêtes POST pour renvoyer l'email de confirmation d'achat

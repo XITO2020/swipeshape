@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { executeQuery } from '../../db';
+import { executeQuery } from '../../../../lib/db';
 import path from 'path';
 import fs from 'fs';
-import { generatePDF } from '@/lib/pdfGenerator';
-import { corsHeaders } from '@/lib/api-middleware-app';
+import { generatePDF } from '../../../../lib/pdfGenerator';
+import { corsHeaders } from '../../../../lib/api-middleware-app';
 
 export async function GET(
   request: Request,

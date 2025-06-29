@@ -1,10 +1,10 @@
 // src/pages/admin/videos.tsx
 import React, { useEffect, useState } from "react";
-import { Video } from "@/types";
-import Button from "@/components/ui/Button";
+import { Video } from "../../types";
+import Button from "../../components/ui/Button";
 import { useRouter } from "next/router";
-import { useAppStore } from "@/lib/store";
-import api from "@/lib/api";
+import { useAppStore } from "../../lib/store";
+import api from "../../lib/api";
 
 interface NewVideo {
   url: string;

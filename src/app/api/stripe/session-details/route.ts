@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getCheckoutSession } from '@/lib/stripe';
-import { executeQuery } from '../../db';
-import { withApiMiddleware, corsHeaders, handleApiError } from '@/lib/api-middleware-app';
+import { getCheckoutSession } from '../../../../lib/stripe';
+import { executeQuery } from '../../../../lib/db';
+import { withApiMiddleware, corsHeaders, handleApiError } from '../../../../lib/api-middleware-app';
 
 export async function GET(request: Request) {
   try {

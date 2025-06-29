@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdmin } from '@/lib/auth-app';
-import { prisma } from '@/lib/prisma';
+import { isAdmin } from '../../../../lib/auth-app';
+import { prisma } from '../../../../lib/prisma';
 
 /**
  * Récupérer la configuration SMTP

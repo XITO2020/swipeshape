@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { executeQuery } from '@/app/api/db'
-import { corsHeaders } from '@/lib/api-middleware-app'
+import { executeQuery } from '../../../lib/db'
+import { corsHeaders } from '../../../lib/api-middleware-app'
 
 export async function GET(request: NextRequest) {
   try {

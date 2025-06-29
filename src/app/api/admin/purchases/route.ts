@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '../../db';
-import { withAdminAuthApp } from '@/lib/admin-middleware-app';
+import { withAdminAuthApp } from '../../../../lib/admin-middleware-app';
 
 /**
  * Gestion des requêtes GET pour obtenir tous les achats avec les détails du programme

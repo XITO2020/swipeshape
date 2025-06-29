@@ -1,8 +1,8 @@
 // src/app/api/newsletter/route.ts
 import { NextResponse } from "next/server";
-import { sendEmail } from "@/services/email.service";
-import { addSubscriber } from "@/services/newsletter.service";
-import { withApiMiddleware, handleApiError } from "@/lib/api-middleware-app";
+import { sendEmail } from "../../../services/email.service";
+import { addSubscriber } from "../../../services/newsletter.service";
+import { withApiMiddleware, handleApiError } from "../../../lib/api-middleware-app";
 
 export async function POST(request: Request) {
   try {

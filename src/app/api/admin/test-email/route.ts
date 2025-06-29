@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdmin } from '@/lib/auth-app';
-import { EmailOptions } from '@/services/email.service';
-import { sendEmail } from '@/services/email.service';
+import { isAdmin } from '../../../../lib/auth-app';
+import { EmailOptions } from '../../../../services/email.service';
+import { sendEmail } from '../../../../services/email.service';
 
 /**
  * Envoyer un email de test pour valider la configuration SMTP

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAppStore } from '@/lib/store';
+import { useAppStore } from '../../lib/store';
 import { useRouter } from 'next/router';
-import EmailTemplateEditor from '@/components/admin/EmailTemplateEditor';
-import EmailPreview from '@/components/admin/EmailPreview';
+import EmailTemplateEditor from '../../components/admin/EmailTemplateEditor';
+import EmailPreview from '../../components/admin/EmailPreview';
 
 interface EmailConfig {
   host: string;

@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import axios from "axios";
-import { Program } from "@/types";
-import { useAppStore } from "@/lib/store";
+import { Program } from "../../types";
+import { useAppStore } from "../../lib/store";
 import api from "@/lib/api";
 import { GetServerSideProps } from "next";
 

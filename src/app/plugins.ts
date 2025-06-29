@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp } from '@/utils/initApp';
+import { initializeApp } from '../utils/initApp';
 
 // Variable pour stocker l'état d'initialisation
 let isInitialized = false;

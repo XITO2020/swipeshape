@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { WebhookEvent } from '@clerk/nextjs/server';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../../../../lib/supabase';
 
 /**
  * Gestion des webhooks Clerk pour synchroniser les utilisateurs

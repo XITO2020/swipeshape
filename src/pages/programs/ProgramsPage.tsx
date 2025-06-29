@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import ProgramCard from '@/components/ProgramCard';
-import { useAppStore } from '@/lib/store';
-import { getPrograms } from '@/lib/supabase';
+import ProgramCard from '../../components/ProgramCard';
+import { useAppStore } from '../../lib/store';
+import { getPrograms } from '../../lib/supabase';
 
 const ProgramsPage: React.FC = () => {
   const { programs, setPrograms } = useAppStore();

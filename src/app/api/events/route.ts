@@ -1,8 +1,8 @@
 // API Route pour les événements
 import { NextResponse } from 'next/server';
-import { executeQuery } from '../db';
-import { Event } from '@/types';
-import { throttleApiRequests, withApiMiddleware, handleApiError } from '@/lib/api-middleware-app';
+import { executeQuery } from '../../../lib/db';
+import { Event } from '../../../types';
+import { throttleApiRequests, withApiMiddleware, handleApiError } from '../../../lib/api-middleware-app';
 
 export async function GET(request: Request) {
   console.log('API events endpoint called with method: GET');

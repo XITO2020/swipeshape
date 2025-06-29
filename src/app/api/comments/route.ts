@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { executeQuery } from '../db';
+import { executeQuery } from '../../../lib/db';
 import { headers } from 'next/headers';
 
 // Fonction pour définir les headers CORS

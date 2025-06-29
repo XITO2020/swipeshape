@@ -1,8 +1,8 @@
 // src/pages/admin/comments.tsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Comment } from "@/types";
-import Button from "@/components/ui/Button";
+import { Comment } from "../../types";
+import Button from "../../components/ui/Button";
 
 export default function AdminCommentsPage() {
   const [comments, setComments] = useState<Comment[]>([]);

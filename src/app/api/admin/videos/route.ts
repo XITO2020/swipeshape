@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { withAdminAuthApp } from "@/lib/admin-middleware-app";
+import { prisma } from "../../../../lib/prisma";
+import { withAdminAuthApp } from "../../../../lib/admin-middleware-app";
 
 /**
  * Gestion des requêtes GET pour obtenir des vidéos (toutes ou une seule)

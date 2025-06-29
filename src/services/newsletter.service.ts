@@ -1,7 +1,7 @@
 /**
  * Service de gestion des newsletters
  */
-import { executeQuery } from '@/lib/db';
+import { executeQuery } from '../lib/db';
 
 export interface Subscriber {
   id: string;

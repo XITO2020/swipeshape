@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { verifyAuthTokenApp } from '@/lib/auth-app';
-import { checkUserCanComment } from '@/lib/db-utils-app';
-import { withApiMiddleware, corsHeaders, handleApiError } from '@/lib/api-middleware-app';
+import { verifyAuthTokenApp } from '../../../../lib/auth-app';
+import { checkUserCanComment } from '../../../../lib/db-utils-app';
+import { withApiMiddleware, corsHeaders, handleApiError } from '../../../../lib/api-middleware-app';
 
 export async function GET(request: Request) {
   try {

@@ -1,9 +1,9 @@
 // src/pages/admin/programs.tsx
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import Button from "@/components/ui/Button";
-import { useAppStore } from "@/lib/store";
-import api from "@/lib/api";
+import Button from "../../components/ui/Button";
+import { useAppStore } from "../../lib/store";
+import api from "../../lib/api";
 import axios from "axios";
 
 interface Program {

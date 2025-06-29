@@ -1,8 +1,8 @@
 // src/app/api/newsletter/schedule/route.ts
 import { NextResponse } from "next/server";
-import { withApiMiddleware, handleApiError } from "@/lib/api-middleware-app";
-import { verifyAuthTokenApp } from "@/lib/auth-app";
-import { executeQuery } from "@/lib/db";
+import { withApiMiddleware, handleApiError } from "../../../../lib/api-middleware-app";
+import { verifyAuthTokenApp } from "../../../../lib/auth-app";
+import { executeQuery } from "../../../../lib/db";
 
 // Méthode pour programmer l'envoi d'une newsletter
 export async function POST(request: Request) {

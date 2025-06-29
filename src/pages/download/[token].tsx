@@ -26,7 +26,7 @@ Ce que fait ce fichier /pages/download/[token].tsx :
 
 // pages/download/[token].tsx
 import { GetServerSideProps } from "next";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../../lib/supabase";
 import { add } from "date-fns";
 
 export const getServerSideProps: GetServerSideProps = async ({ params, res }) => {

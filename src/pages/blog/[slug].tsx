@@ -1,5 +1,5 @@
 import { GetServerSideProps } from 'next';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../../lib/prisma';
 import { ParsedUrlQuery } from 'querystring';
 import Head from 'next/head';
 

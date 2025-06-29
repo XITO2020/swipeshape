@@ -1,10 +1,10 @@
 // src/pages/admin/articles.tsx
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { Article } from "@/types";
-import Button from "@/components/ui/Button";
-import { useAppStore } from "@/lib/store";
-import api from "@/lib/api";
+import { Article } from "../../types";
+import Button from "../../components/ui/Button";
+import { useAppStore } from "../../lib/store";
+import api from "../../lib/api";
 
 export default function AdminArticlesPage() {
   const [articles, setArticles] = useState<Article[]>([]);

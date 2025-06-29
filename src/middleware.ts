@@ -1,55 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Middleware de sécurité pour HTTPS et headers
-export default function middleware(request: NextRequest) {
-  const forwardedProto = request.headers.get("x-forwarded-proto");
-  const host = request.headers.get("host");
-  
-  // Skip HTTPS redirect for localhost and development environments
+export function middleware(request: NextRequest): NextResponse {
+  const url = request.nextUrl.clone();
+
+  // En dev ou localhost, on ne force pas HTTPS
   if (
-    host?.startsWith("localhost") ||
-    host?.startsWith("127.0.0.1") ||
-    process.env.NODE_ENV === "development"
+    process.env.NODE_ENV === "development" ||
+    url.hostname === "localhost" ||
+    url.hostname === "127.0.0.1"
   ) {
     const response = NextResponse.next();
     return addSecurityHeaders(response);
   }
-  
-  // Redirect to HTTPS if the connection is using HTTP
-  if (forwardedProto && forwardedProto !== "https") {
-    return NextResponse.redirect(
-      new URL(`https://${host}${request.nextUrl.pathname}${request.nextUrl.search}`),
-      301
-    );
+
+  // Si on est en prod et que ce n'est pas HTTPS, on redirige
+  if (url.protocol !== "https:") {
+    url.protocol = "https:";
+    return NextResponse.redirect(url);
   }
-  
+
+  // Sinon on poursuit normalement
   const response = NextResponse.next();
   return addSecurityHeaders(response);
 }
 
-// Fonction utilitaire pour ajouter les en-têtes de sécurité
-function addSecurityHeaders(response: NextResponse) {
-  // Strict-Transport-Security header
+// Ajout des headers de sécurité
+function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set(
-    "Strict-Transport-Security", 
+    "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains; preload"
   );
-  
-  // Content-Security-Policy for secure connections
-  response.headers.set(
-    "Content-Security-Policy", 
-    "upgrade-insecure-requests"
-  );
-  
-  // Additional security headers
+  response.headers.set("Content-Security-Policy", "upgrade-insecure-requests");
   response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  
+  response.headers.set(
+    "Referrer-Policy",
+    "strict-origin-when-cross-origin"
+  );
   return response;
 }
 
-// Configuration du matcher pour le middleware
+// Appliquer à toutes les routes (sauf assets Next.js automatiques)
 export const config = {
-  matcher: ["/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico).*)"
+  ],
 };

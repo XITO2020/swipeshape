@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import ProgramCard from '@/components/ProgramCard';
-import { useAppStore } from '@/lib/store';
-import { getPrograms } from '@/lib/api';
+import ProgramCard from '../../components/ProgramCard';
+import { useAppStore } from '../../lib/store';
+import { getPrograms } from '../../lib/api';
 // Utilisation de la version SSR-safe pour getServerSideProps
-import { ssrGetPrograms } from '@/lib/ssr-api';
-import { Program } from '@/types';
+import { ssrGetPrograms } from '../../lib/ssr-api';
+import { Program } from '../../types';
 
 // Server-side data fetching
 export async function getServerSideProps() {

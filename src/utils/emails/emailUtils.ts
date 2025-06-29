@@ -9,8 +9,8 @@ import {
   sendNewsletter,
   EmailOptions,
   EmailRecipient
-} from '@/services/email.service';
-import { addSubscriber } from '@/services/newsletter.service';
+} from '../../services/email.service';
+import { addSubscriber } from '../../services/newsletter.service';
 
 /**
  * Ajoute un contact à la liste des abonnés newsletter

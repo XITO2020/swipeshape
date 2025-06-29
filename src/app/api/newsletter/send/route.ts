@@ -1,9 +1,9 @@
 // src/app/api/newsletter/send/route.ts
 import { NextResponse } from "next/server";
-import { sendNewsletter } from "@/services/email.service";
-import { withApiMiddleware, handleApiError } from "@/lib/api-middleware-app";
-import { requireAuthApp } from "@/lib/auth-app";
-import { getSubscribersFromDatabase } from "@/services/newsletter.service";
+import { sendNewsletter } from "../../../../services/email.service";
+import { withApiMiddleware, handleApiError } from "../../../../lib/api-middleware-app";
+import { requireAuthApp } from "../../../../lib/auth-app";
+import { getSubscribersFromDatabase } from "../../../../services/newsletter.service";
 
 // Méthode pour envoyer une newsletter immédiatement
 export async function POST(request: Request) {

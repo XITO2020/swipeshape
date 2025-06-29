@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { useAppStore } from '../../lib/store';
-import Button from '@/components/ui/Button';
+import Button from '../../components/ui/Button';
 
 // Types d'emails supportés
 const EMAIL_TYPES = [

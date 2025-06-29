@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createCheckoutSession } from '@/lib/stripe';
-import { executeQuery } from '../../db';
+import { createCheckoutSession } from '../../../../lib/stripe';
+import { executeQuery } from '../../../../lib/db';
 import { withApiMiddleware, corsHeaders, handleApiError } from '@/lib/api-middleware-app';
 
 export async function POST(request: Request) {

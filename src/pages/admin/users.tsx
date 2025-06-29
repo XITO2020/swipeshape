@@ -1,7 +1,7 @@
 // src/pages/admin/users.tsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { User } from "@/types";
+import { User } from "../../types";
 
 // Extended user interface with role property
 interface AdminUser extends User {

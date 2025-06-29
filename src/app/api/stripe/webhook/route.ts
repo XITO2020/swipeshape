@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../../../../lib/supabase';
 import { nanoid } from 'nanoid';
-import { sendEmail } from '@/utils/emails/emailUtils';
+import { sendEmail } from '../../../../utils/emails/emailUtils';
 
 // Configurer Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2022-11-15' });

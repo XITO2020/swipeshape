@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { withAdminAuthApp } from "@/lib/admin-middleware-app";
-import { withApiMiddleware, handleApiError } from "@/lib/api-middleware-app";
+import { prisma } from "../../../../lib/prisma";
+import { withAdminAuthApp } from "../../../../lib/admin-middleware-app";
+import { withApiMiddleware, handleApiError } from "../../../../lib/api-middleware-app";
 
 // Handler pour les requêtes GET
 export async function GET(request: Request) {

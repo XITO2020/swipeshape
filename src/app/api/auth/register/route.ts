@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
-import { executeQuery } from '@/app/api/db'
-import { sendWelcomeEmail } from '@/services/email.service'
-import { corsHeaders } from '@/lib/api-middleware-app'
+import { executeQuery } from '../../../../lib/db'
+import { sendWelcomeEmail } from '../../../../services/email.service'
+import { corsHeaders } from '../../../../lib/api-middleware-app'
 
 export async function POST(request: NextRequest) {
   try {
