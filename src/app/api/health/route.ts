@@ -1,3 +1,4 @@
+// src/app/api/health/route.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
@@ -8,10 +9,12 @@ const supabase = createClient(
 
 export async function GET() {
   try {
+    // Test minimal : lire un id de programmes
     const { data, error } = await supabase
       .from('programs')
       .select('id')
       .limit(1)
+
     if (error) {
       console.error('❌ health SQL error:', error)
       return NextResponse.json(
@@ -19,6 +22,7 @@ export async function GET() {
         { status: 500 }
       )
     }
+
     return NextResponse.json(
       { status: 'ok', dbReachable: true, sample: data },
       { status: 200 }
@@ -32,7 +36,6 @@ export async function GET() {
   }
 }
 
-// Bloquer les autres méthodes
 export const POST   = () => NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 })
 export const PUT    = POST
 export const DELETE = POST

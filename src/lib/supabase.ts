@@ -1,26 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 import { Program, Article, Comment, Event, User, Video, Test, TestQuestion, UserTestResult } from '@/types';
 import { mockArticles, mockEvents, mockPrograms, mockUsers, mockVideos, mockTests, mockTestQuestions, mockUserTestResults } from '@/lib/mockData';
+const URL   = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const ANON  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const ADMIN = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+// Créer le client Supabase avec la configuration recommandée par Supabase
+export const supabase      = createClient(URL, ANON)
+export const supabaseAdmin = createClient(URL, ADMIN)
 
 // Flag to control whether to use mock data
 const USE_MOCK_DATA = false;
 
-// Using process.env for Next.js environment variables compatibility
-// Fall back to hardcoded values from vite.config.ts if environment variables are not available
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://db.nwqqxrmobxtwzcnaveqi.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53cXF4cm1vYnh0d3pjbmF2ZXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MTI0MTAsImV4cCI6MjA3NDQ4ODQxMH0.34APs7NhQ67I_k8gYRF8Dvd501-pkVwGVMytW2qweNg';
 
-// Note: We're no longer throwing an error here since we have fallback values
 
-console.log('Initializing Supabase client with URL:', supabaseUrl?.substring(0, 15) + '...');
-
-// Afficher le détail des URL utilisées
-console.log('Détails de la configuration Supabase:');
-console.log('- URL:', supabaseUrl);
-console.log('- Clé (10 premiers caractères):', supabaseAnonKey?.substring(0, 10) + '...');
-
-// Créer le client Supabase avec la configuration recommandée par Supabase
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Log pour confirmer l'initialisation
 console.log('Client Supabase initialisé');
@@ -254,7 +247,7 @@ export const updateUserProfile = async (userId: string, updates: { avatar_url?: 
 // Programs functions
 export const getPrograms = async () => {
   // Log détaillé pour le débogage
-  console.log('getPrograms() appelé - URL Supabase:', supabaseUrl);
+  console.log('getPrograms() appelé - URL Supabase:', supabase);
   
   if (USE_MOCK_DATA) {
     console.log('Using mock programs');
@@ -336,7 +329,7 @@ export const deleteProgram = async (id: number) => {
 // Articles functions
 export const getArticles = async () => {
   // Log détaillé pour le débogage
-  console.log('getArticles() appelé - URL Supabase:', supabaseUrl);
+  console.log('getArticles() appelé - URL Supabase:', supabase);
   
   if (USE_MOCK_DATA) {
     console.log('Using mock articles');
@@ -634,7 +627,7 @@ export const searchEvents = async (query: string = '', date: Date | null = null)
 // Comments functions
 export const getComments = async () => {
   // Log for debugging
-  console.log('getComments() appelé - URL Supabase:', supabaseUrl);
+  console.log('getComments() appelé - URL Supabase:', supabase);
   
   if (USE_MOCK_DATA) {
     console.log('Attention: Mock data not implemented for comments. Fetching from database...');

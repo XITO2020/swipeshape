@@ -1,32 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { executeQuery } from '@/app/api/db'
-import { corsHeaders } from '@/lib/api-middleware-app'
+// src/app/api/programs/route.ts
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-export async function GET(request: NextRequest) {
+// Initialisation du client Supabase en mode server-side
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+export async function GET() {
   try {
-    const sql = `SELECT * FROM programs ORDER BY created_at DESC;`
-    const { data, error } = await executeQuery(sql, [])
+    const { data, error } = await supabase
+      .from('programs')
+      .select('*')
+      .order('created_at', { ascending: false })
+
     if (error) {
-      console.error('❌ programmes SQL error:', error)
+      console.error('❌ API programmes error:', error)
       return NextResponse.json(
         { error: 'Impossible de récupérer les programmes' },
-        { status: 500, headers: corsHeaders() }
+        { status: 500 }
       )
     }
-    return NextResponse.json(data ?? [], { status: 200, headers: corsHeaders() })
+
+    return NextResponse.json(data)
   } catch (err: any) {
     console.error('❌ programmes exception:', err)
     return NextResponse.json(
       { error: err.message || 'Erreur serveur' },
-      { status: 500, headers: corsHeaders() }
+      { status: 500 }
     )
   }
 }
 
+// Autoriser simplement la méthode OPTIONS
 export async function OPTIONS() {
-  return NextResponse.json({}, { status: 200, headers: corsHeaders() })
+  return NextResponse.json({}, { status: 200 })
 }
-export const POST   = () => NextResponse.json({ error: 'Method Not Allowed' }, { status: 405, headers: corsHeaders() })
+
+export const POST   = () => NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 })
 export const PUT    = POST
 export const DELETE = POST
 export const PATCH  = POST
