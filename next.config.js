@@ -35,7 +35,7 @@ const nextConfig = {
   },
 
   webpack: (config, { isServer }) => {
-    // ✅ Ajout des alias pour résoudre les chemins
+    // ✅ Ajout des alias pour tous les chemins @/xx
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       '@': path.resolve(__dirname, 'src'),
@@ -46,19 +46,22 @@ const nextConfig = {
       '@styles': path.resolve(__dirname, 'src/styles'),
     };
 
-    // ✅ Ignorer certains modules côté client
+    // ❌ Désactivation du ignore-loader non garanti
+    // ✅ Ignorer les fichiers de backup en les excluant du bundle
     config.module.rules.push({
       test: /[\\/]src[\\/]pages[\\/]api_backup[\\/].*$/,
-      loader: 'ignore-loader',
+      use: 'null-loader',
     });
 
+    // ✅ Plus sûr : ignorer certains modules côté client avec `false`
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
-        'react-router-dom': require.resolve('./src/mockModules/empty-module.js'),
-        '@clerk/clerk-react': require.resolve('./src/mockModules/empty-module.js'),
-        'react-bootstrap/Accordion': require.resolve('./src/mockModules/empty-module.js'),
-        'react-quill': require.resolve('./src/mockModules/empty-module.js'),
+        fs: false,
+        path: false,
+        crypto: false,
+        net: false,
+        tls: false,
       };
     }
 
