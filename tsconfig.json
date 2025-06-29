@@ -22,7 +22,15 @@
     "baseUrl": ".",
     "paths": {
       "@/*": [
-        "src/*"
+        "src/*",
+        "src/app/*",
+        "src/components/*",
+        "src/lib/*",
+        "src/pages/*",
+        "src/styles/*",
+        "src/types/*",
+        "src/utils/*",
+        "src/app/api/*"
       ]
     },
     "incremental": true,
