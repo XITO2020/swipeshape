@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useAppStore } from '@/lib/store';
-import { updateUserProfile, getUserProfile } from '@/lib/supabase';
-import AvatarUploader from '@/components/AvatarUploader';
-import { withAuth } from '@/lib/withAuth';
+import { useAppStore } from '../lib/store';
+import { updateUserProfile, getUserProfile } from '../lib/supabase';
+import AvatarUploader from '../components/AvatarUploader';
+import { withAuth } from '../lib/withAuth';
 import { GetServerSideProps } from 'next';
-import { User } from '@/types';
+import { User } from '../types';
 
 // Server-side authentication and data fetching
 export const getServerSideProps: GetServerSideProps = async (context) => {

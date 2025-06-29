@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, MapPin, Clock } from 'lucide-react';
-import ContentFilter from '@/components/ContentFilter';
+import ContentFilter from '../components/ContentFilter';
 import axios from 'axios';
 
 // Server-side data fetching

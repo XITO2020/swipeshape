@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { AppProps } from 'next/app';
 import '../index.css';
-import { useAppStore } from '@/lib/store';
-import Sidebar from '@/components/SideBar';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import { useAppStore } from '../lib/store';
+import Sidebar from '../components/SideBar';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 
 // Importer ClerkProvider directement
 import { ClerkProvider } from '@clerk/nextjs';

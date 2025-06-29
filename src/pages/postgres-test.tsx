@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
 import { GetServerSideProps } from 'next';
-import styles from '@/styles/Home.module.css';
+import styles from '../styles/Home.module.css';
 
 interface PostgresTestProps {
   initialData: {

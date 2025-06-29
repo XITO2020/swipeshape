@@ -1,6 +1,6 @@
 import React from "react";
 import HomePage from "./HomePage";
-import { useAppStore } from "@/lib/store";
+import { useAppStore } from "../lib/store";
 
 export default function Home() {
   const { isAuthenticated } = useAppStore();

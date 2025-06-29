@@ -4,7 +4,7 @@ import axios from "axios";
 import { useRouter } from "next/router";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
-import { isValidPassword } from "@/lib/validate";
+import { isValidPassword } from "../lib/validate";
 
 export default function RegisterForm() {
   const [email, setEmail] = useState("");

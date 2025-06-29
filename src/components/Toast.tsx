@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useToastStore } from "@/lib/store";
+import { useToastStore } from "../lib/store";
 import { AnimatePresence, motion } from "framer-motion";
 
 export function Toast() {

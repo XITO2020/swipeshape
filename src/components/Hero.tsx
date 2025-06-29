@@ -1,6 +1,6 @@
 // src/components/Hero.tsx
 import React from "react";
-import VideoBanner from "@/components/ui/VideoBanner";
+import VideoBanner from "../components/ui/VideoBanner";
 
 export default function Hero() {
   return (

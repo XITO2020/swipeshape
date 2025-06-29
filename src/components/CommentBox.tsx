@@ -1,6 +1,6 @@
 // src/components/CommentBox.tsx
 import React from "react";
-import { Comment } from "@/types";
+import { Comment } from "../types";
 
 export default function CommentBox({ comment }: { comment: Comment }) {
   return (

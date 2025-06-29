@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 // Utiliser l'API centralisée avec axios
-import { getArticles } from '@/lib/api';
-import ContentFilter from '@/components/ContentFilter';
-import { Article } from '@/types';
-import { useAppStore } from '@/lib/store';
+import { getArticles } from '../lib/api';
+import ContentFilter from '../components/ContentFilter';
+import { Article } from '../types';
+import { useAppStore } from '../lib/store';
 
 interface BlogPageProps {
   initialArticles?: Article[];

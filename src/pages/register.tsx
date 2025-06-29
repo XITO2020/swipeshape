@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { useAppStore } from '@/lib/store';
+import { useAppStore } from '../lib/store';
 import { withPublic } from '../lib/withAuth';
 
 const RegisterPage: React.FC = () => {
