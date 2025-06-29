@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../lib/supabase';
 import { Upload } from 'lucide-react';
 
 // Dynamically import ReactQuill with SSR disabled

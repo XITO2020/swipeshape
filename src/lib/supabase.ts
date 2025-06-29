@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Program, Article, Comment, Event, User, Video, Test, TestQuestion, UserTestResult } from '@/types';
-import { mockArticles, mockEvents, mockPrograms, mockUsers, mockVideos, mockTests, mockTestQuestions, mockUserTestResults } from '@/lib/mockData';
+import { mockArticles, mockEvents, mockPrograms, mockUsers, mockVideos, mockTests, mockTestQuestions, mockUserTestResults } from '../lib/mockData';
 const URL   = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const ADMIN = process.env.SUPABASE_SERVICE_ROLE_KEY!
