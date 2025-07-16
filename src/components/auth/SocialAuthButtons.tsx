@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import styles from './SocialAuth.module.css';
+import styles from './SocialAuth.module.vanilla.css';
 
 // Dynamically import Clerk components to avoid SSR issues
 const SignInButton = dynamic(() => import('@clerk/nextjs').then(mod => mod.SignInButton), {

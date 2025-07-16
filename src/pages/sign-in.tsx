@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { SignIn } from '@clerk/nextjs';
 import SocialAuthButtons from '../components/auth/SocialAuthButtons';
-import styles from '../styles/Auth.module.css';
+import styles from '../styles/Auth.module.vanilla.css';
 
 // Tell Next.js to render this page on the client side only
 export const getServerSideProps = () => ({ props: {} });
