@@ -1,135 +1,88 @@
-import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { withAdminAuthApp } from "../../../../lib/admin-middleware-app";
 
-/**
- * Gestion des requêtes GET pour obtenir des vidéos (toutes ou une seule)
- */
-export const GET = withAdminAuthApp(async (request: Request) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const videoId = searchParams.get("id");
-    
-    if (videoId) {
-      // Get single video
-      const video = await prisma.video.findUnique({
-        where: { id: videoId },
-      });
-      
-      if (!video) {
-        return NextResponse.json({ error: "Vidéo non trouvée" }, { status: 404 });
-      }
-      
-      return NextResponse.json(video);
-    } else {
-      // Get all videos
-      const videos = await prisma.video.findMany({
-        orderBy: { createdAt: "desc" },
-      });
-      
-      return NextResponse.json(videos);
-    }
-  } catch (error: any) {
-    console.error("Error in admin/videos API (GET):", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
+import { z } from 'zod';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuth } from '@clerk/nextjs/server';
+import prisma from '../../../../lib/prisma';
+import { corsHeaders } from '../../../../lib/api-middleware-app';
+
+const videoSchema = z.object({
+  id: z.string().uuid().optional(),
+  title: z.string().min(1),
+  url: z.string().url(),
+  description: z.string().optional(),
+  featured: z.boolean().optional()
 });
 
-/**
- * Gestion des requêtes POST pour créer une nouvelle vidéo
- */
-export const POST = withAdminAuthApp(async (request: Request) => {
-  try {
-    const body = await request.json();
-    
-    if (!body.title || !body.url) {
-      return NextResponse.json({ error: "Titre et URL de la vidéo requis" }, { status: 400 });
-    }
-    
-    // Create new video
-    const newVideo = await prisma.video.create({
-      data: {
-        title: body.title,
-        description: body.description || "",
-        url: body.url,
-        thumbnailUrl: body.thumbnailUrl || "",
-        duration: body.duration || 0,
-        published: body.published || false,
-      },
-    });
-    
-    return NextResponse.json(newVideo, { status: 201 });
-  } catch (error: any) {
-    console.error("Error in admin/videos API (POST):", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+function enforceAdmin(req: NextRequest) {
+  const { userId, sessionClaims } = getAuth(req);
+  if (!userId || sessionClaims?.role !== 'admin') {
+    return NextResponse.json({ error: 'Accès réservé aux administrateurs' }, { status: 403, headers: corsHeaders() });
   }
-});
-
-/**
- * Gestion des requêtes PUT pour mettre à jour une vidéo
- */
-export const PUT = withAdminAuthApp(async (request: Request) => {
-  try {
-    const body = await request.json();
-    
-    if (!body.id) {
-      return NextResponse.json({ error: "ID de la vidéo requis" }, { status: 400 });
-    }
-    
-    // Update video
-    const updatedVideo = await prisma.video.update({
-      where: { id: body.id },
-      data: {
-        title: body.title,
-        description: body.description,
-        url: body.url,
-        thumbnailUrl: body.thumbnailUrl,
-        duration: body.duration,
-        published: body.published,
-      },
-    });
-    
-    return NextResponse.json(updatedVideo);
-  } catch (error: any) {
-    console.error("Error in admin/videos API (PUT):", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
-});
-
-/**
- * Gestion des requêtes DELETE pour supprimer une vidéo
- */
-export const DELETE = withAdminAuthApp(async (request: Request) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const videoId = searchParams.get("id");
-    
-    if (!videoId) {
-      return NextResponse.json({ error: "ID de la vidéo requis" }, { status: 400 });
-    }
-    
-    // Delete video
-    const deletedVideo = await prisma.video.delete({
-      where: { id: videoId },
-    });
-    
-    return NextResponse.json({ success: true, video: deletedVideo });
-  } catch (error: any) {
-    console.error("Error in admin/videos API (DELETE):", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
-});
-
-/**
- * Gestion des requêtes OPTIONS pour CORS
- */
-export async function OPTIONS() {
-  return NextResponse.json({}, { status: 200 });
+  return null;
 }
 
-/**
- * Gestion des autres méthodes HTTP non supportées
- */
-export const PATCH = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
+// GET: Liste ou récupération d'une vidéo
+export async function GET(req: NextRequest) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
+  try {
+    const { searchParams } = new URL(req.url);
+    const videoId = searchParams.get('id');
+    if (videoId) {
+      const video = await prisma.video.findUnique({ where: { id: videoId } });
+      if (!video) {
+        return NextResponse.json({ error: 'Vidéo non trouvée' }, { status: 404, headers: corsHeaders() });
+      }
+      return NextResponse.json(video, { headers: corsHeaders() });
+    }
+    const videos = await prisma.video.findMany({ orderBy: { createdAt: 'desc' } });
+    return NextResponse.json({ videos }, { headers: corsHeaders() });
+  } catch (err: any) {
+    console.error('Erreur GET videos:', err);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500, headers: corsHeaders() });
+  }
+}
+
+// POST: Création d'une vidéo
+export async function POST(req: NextRequest) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
+  let body: unknown;
+  try { body = await req.json(); } catch {
+    return NextResponse.json({ error: 'JSON invalide' }, { status: 400, headers: corsHeaders() });
+  }
+  const parse = videoSchema.safeParse(body);
+  if (!parse.success) {
+    return NextResponse.json({ error: parse.error.format() }, { status: 422, headers: corsHeaders() });
+  }
+  try {
+    const data = parse.data;
+    const video = await prisma.video.create({ data: {
+      title: data.title,
+      url: data.url,
+      description: data.description,
+      featured: data.featured ?? false
+    }});
+    return NextResponse.json({ video }, { status: 201, headers: corsHeaders() });
+  } catch (err: any) {
+    console.error('Erreur POST video:', err);
+    return NextResponse.json({ error: 'Impossible de créer la vidéo' }, { status: 500, headers: corsHeaders() });
+  }
+}
+
+// DELETE: Suppression d'une vidéo
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
+  const { id } = params;
+  if (!id) {
+    return NextResponse.json({ error: 'ID requis' }, { status: 400, headers: corsHeaders() });
+  }
+  try {
+    await prisma.video.delete({ where: { id } });
+    return NextResponse.json({ success: true }, { headers: corsHeaders() });
+  } catch (err: any) {
+    console.error('Erreur DELETE video:', err);
+    return NextResponse.json({ error: 'Impossible de supprimer la vidéo' }, { status: 500, headers: corsHeaders() });
+  }
+}

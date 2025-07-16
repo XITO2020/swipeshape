@@ -1,64 +1,28 @@
-import { NextResponse } from 'next/server';
-import { executeQuery } from '../../db';
-import { withAdminAuthApp } from '../../../../lib/admin-middleware-app';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuth } from '@clerk/nextjs/server';
+import prisma from '../../../../lib/prisma';
+import { corsHeaders } from '../../../../lib/api-middleware-app';
 
-/**
- * Gestion des requêtes GET pour obtenir tous les achats avec les détails du programme
- */
-export const GET = withAdminAuthApp(async (request: Request) => {
-  try {
-    // Récupérer tous les achats avec les détails du programme
-    const { data: purchases, error } = await executeQuery(`
-      SELECT 
-        p.*, 
-        pr.name as program_name,
-        pr.price as program_price
-      FROM purchases p
-      LEFT JOIN programs pr ON p.program_id = pr.id
-      ORDER BY p.created_at DESC
-    `, []);
-
-    if (error) {
-      console.error('Erreur lors de la récupération des achats:', error);
-      return NextResponse.json({ 
-        error: 'Erreur lors de la récupération des achats' 
-      }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      purchases
-    });
-  } catch (error) {
-    console.error('Erreur serveur lors de la récupération des achats:', error);
-    return NextResponse.json({ 
-      error: 'Erreur serveur lors de la récupération des achats' 
-    }, { status: 500 });
+function enforceAdmin(req: NextRequest) {
+  const { userId, sessionClaims } = getAuth(req);
+  if (!userId || sessionClaims?.role !== 'admin') {
+    return NextResponse.json({ error: 'Accès réservé aux administrateurs' }, { status: 403, headers: corsHeaders() });
   }
-});
-
-/**
- * Gestion des requêtes OPTIONS pour CORS
- */
-export async function OPTIONS() {
-  return NextResponse.json({}, { status: 200 });
+  return null;
 }
 
-/**
- * Gestion des autres méthodes HTTP non supportées
- */
-export const POST = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
+export async function GET(req: NextRequest) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
 
-export const PUT = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
-
-export const DELETE = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
-
-export const PATCH = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
+  try {
+    const purchases = await prisma.purchase.findMany({
+      include: { program: true, user: { select: { email: true, id: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    return NextResponse.json({ purchases }, { headers: corsHeaders() });
+  } catch (err: any) {
+    console.error('Erreur GET purchases:', err);
+    return NextResponse.json({ error: 'Impossible de récupérer les achats' }, { status: 500, headers: corsHeaders() });
+  }
+}

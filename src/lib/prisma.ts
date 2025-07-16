@@ -1,29 +1,19 @@
-import { PrismaClient } from "@prisma/client";
-import "../types/prisma";
-
-const USE_PRISMA = process.env.USE_POSTGRES === "true";
+import pkg from '@prisma/client';
+const { PrismaClient } = pkg;
+import '../types/prisma';
 
 declare global {
+  // singleton pour éviter les multiples connexions
   // eslint-disable-next-line no-var
-  var prisma: PrismaNamespace.ExtendedPrismaClient | undefined;
+  var globalPrisma: PrismaClient | undefined;
 }
 
-let prismaClient: PrismaNamespace.ExtendedPrismaClient | undefined = undefined;
+const prisma = globalPrisma || new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query'] : []
+});
 
-if (USE_PRISMA) {
-  prismaClient =
-    global.prisma ||
-    (new PrismaClient({
-      log: process.env.NODE_ENV === "development" ? ["query"] : [],
-    }) as PrismaNamespace.ExtendedPrismaClient);
-
-  if (process.env.NODE_ENV !== "production") {
-    global.prisma = prismaClient;
-  }
-
-  console.log("✅ Prisma initialisé (PostgreSQL direct)");
-} else {
-  console.log("⛔ Prisma désactivé (mode Supabase)");
+if (process.env.NODE_ENV !== 'production') {
+  globalPrisma = prisma;
 }
 
-export const prisma = prismaClient!;
+export default prisma;

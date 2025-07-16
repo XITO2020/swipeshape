@@ -1,7 +1,6 @@
 /**
  * Plugin Next.js pour exécuter des tâches au démarrage de l'application
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeApp } from '../utils/initApp';
 
@@ -9,16 +8,15 @@ import { initializeApp } from '../utils/initApp';
 let isInitialized = false;
 
 export async function middleware(request: NextRequest) {
-  // Exécuter l'initialisation une seule fois au démarrage
+  // Exécuter l'initialisation une seule fois en production
   if (!isInitialized && process.env.NODE_ENV !== 'development') {
     isInitialized = true;
     await initializeApp();
   }
-  
   return NextResponse.next();
 }
 
-// Exporter la configuration du plugin
+// Appliquer le middleware à toutes les routes API
 export const config = {
   matcher: ['/api/:path*'],
 };

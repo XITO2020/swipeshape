@@ -1,89 +1,41 @@
-import { NextResponse } from 'next/server';
-import { createCheckoutSession } from '../../../../lib/stripe';
-import { executeQuery } from '../../../../lib/db';
-import { withApiMiddleware, corsHeaders, handleApiError } from '@/lib/api-middleware-app';
+import { z } from "zod";
+import { NextRequest, NextResponse } from "next/server";
+import { getAuth } from "@clerk/nextjs/server";
+import Stripe from "stripe";
+import { corsHeaders } from "../../../../lib/api-middleware-app";
 
-export async function POST(request: Request) {
-  try {
-    // 1. Récupérer les données de la requête
-    const body = await request.json();
-    const { programId, email } = body;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2022-11-15" });
 
-    if (!programId || !email) {
-      return NextResponse.json({ 
-        error: 'Données invalides', 
-        message: 'L\'ID du programme et l\'email sont requis' 
-      }, { status: 400 });
-    }
+const checkoutSchema = z.object({ priceId: z.string().min(1) });
 
-    // 2. Vérifier que l'utilisateur existe
-    const { data: user, error: userError } = await executeQuery(
-      'SELECT id, email FROM users WHERE email = $1',
-      [email]
-    );
-
-    if (userError || !user || user.length === 0) {
-      return NextResponse.json({ 
-        error: 'Utilisateur non autorisé', 
-        message: 'Veuillez vous connecter pour effectuer cet achat' 
-      }, { status: 401 });
-    }
-
-    // 3. Vérifier que le programme existe
-    const { data: program, error: programError } = await executeQuery(
-      'SELECT id, name, price FROM programs WHERE id = $1',
-      [programId]
-    );
-
-    if (programError || !program || program.length === 0) {
-      return NextResponse.json({ 
-        error: 'Programme introuvable', 
-        message: 'Le programme demandé n\'existe pas' 
-      }, { status: 404 });
-    }
-
-    // 4. Créer une session de paiement Stripe
-    const checkoutUrl = await createCheckoutSession(email, programId);
-
-    // 5. Retourner l'URL de la session Stripe
-    return withApiMiddleware(request, NextResponse.json({ url: checkoutUrl }));
-
-  } catch (error: any) {
-    console.error('Erreur lors de la création de la session de paiement:', error);
-    return handleApiError(
-      request,
-      error,
-      500,
-      'Une erreur est survenue lors de la création de la session de paiement'
-    );
+export async function POST(req: NextRequest) {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    return NextResponse.json({ error: "Utilisateur non authentifié" }, { status: 401, headers: corsHeaders() });
   }
-}
 
-// Gestion des requêtes OPTIONS (CORS)
-export async function OPTIONS(request: Request) {
-  // Créer une réponse vide
-  const response = NextResponse.json({}, { status: 200 });
-  // Appliquer les headers CORS
-  return withApiMiddleware(request, response);
-}
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Requête JSON invalide" }, { status: 400, headers: corsHeaders() });
+  }
+  const parse = checkoutSchema.safeParse(body);
+  if (!parse.success) {
+    return NextResponse.json({ error: parse.error.format() }, { status: 422, headers: corsHeaders() });
+  }
 
-// Gestion des autres méthodes HTTP
-export async function GET(request: Request) {
-  const response = NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-  return withApiMiddleware(request, response);
-}
-
-export async function PUT(request: Request) {
-  const response = NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-  return withApiMiddleware(request, response);
-}
-
-export async function DELETE(request: Request) {
-  const response = NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-  return withApiMiddleware(request, response);
-}
-
-export async function PATCH(request: Request) {
-  const response = NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-  return withApiMiddleware(request, response);
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [{ price: parse.data.priceId, quantity: 1 }],
+      mode: "payment",
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/cancel`,
+      metadata: { userId },
+    });
+    return NextResponse.json({ sessionId: session.id }, { status: 200, headers: corsHeaders() });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || "Erreur interne Stripe" }, { status: 502, headers: corsHeaders() });
+  }
 }

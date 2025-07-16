@@ -1,127 +1,97 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { isAdmin } from '../../../../lib/auth-app';
-import { prisma } from '../../../../lib/prisma';
 
-/**
- * Récupérer la configuration SMTP
- */
-export async function GET(request: NextRequest) {
-  // Vérifier que l'utilisateur est admin
-  if (!(await isAdmin(request))) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-  }
-  
-  try {
-    // Récupérer les paramètres depuis la base de données ou les variables d'environnement
-    const settings = {
-      host: process.env.EMAIL_HOST || '',
-      port: process.env.EMAIL_PORT || '587',
-      secure: process.env.EMAIL_SECURE === 'true',
-      user: process.env.EMAIL_USER || '',
-      // Ne pas retourner le mot de passe complet pour des raisons de sécurité
-      password: process.env.EMAIL_PASS ? '••••••••' : '',
-      fromName: process.env.EMAIL_FROM_NAME || 'SwipeShape',
-      fromEmail: process.env.EMAIL_FROM || 'no-reply@swipeshape.com'
-    };
-    
-    // Tenter de récupérer les settings depuis la DB si on a une table pour ça
-    try {
-      const dbSettings = await prisma.settings.findMany({
-        where: {
-          key: {
-            startsWith: 'email_'
-          }
-        }
-      });
-      
-      if (dbSettings.length > 0) {
-        // Mapper les settings de la DB au format attendu
-        dbSettings.forEach(setting => {
-          if (setting.key === 'email_host') settings.host = setting.value;
-          if (setting.key === 'email_port') settings.port = setting.value;
-          if (setting.key === 'email_secure') settings.secure = setting.value === 'true';
-          if (setting.key === 'email_user') settings.user = setting.value;
-          if (setting.key === 'email_pass' && setting.value) settings.password = '••••••••';
-          if (setting.key === 'email_from_name') settings.fromName = setting.value;
-          if (setting.key === 'email_from') settings.fromEmail = setting.value;
-        });
-      }
-    } catch (dbError) {
-      console.error('Erreur lors de la récupération des paramètres depuis la DB:', dbError);
-      // On continue avec les valeurs d'environnement
-    }
-    
-    return NextResponse.json(settings);
-  } catch (error) {
-    console.error('Erreur lors de la récupération de la configuration email:', error);
+import { z } from 'zod';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuth } from '@clerk/nextjs/server';
+import { executeQuery } from '../../../../lib/db';
+import { corsHeaders } from '../../../../lib/api-middleware-app';
+
+// Schéma Zod pour validation des configs email
+const configSchema = z.object({
+  smtpHost: z.string().min(1),
+  smtpPort: z.number().int().positive(),
+  smtpUser: z.string().min(1),
+  smtpPass: z.string().min(1),
+  fromEmail: z.string().email(),
+  replyTo: z.string().email().optional()
+});
+
+// Vérifier que l'utilisateur est admin
+function enforceAdmin(req: NextRequest) {
+  const { userId, sessionClaims } = getAuth(req);
+  if (!userId || sessionClaims?.role !== 'admin') {
     return NextResponse.json(
-      { error: 'Impossible de récupérer la configuration' },
-      { status: 500 }
+      { error: 'Accès réservé aux administrateurs' },
+      { status: 403, headers: corsHeaders() }
     );
   }
+  return null;
 }
 
-/**
- * Mettre à jour la configuration SMTP
- */
-export async function POST(request: NextRequest) {
-  // Vérifier que l'utilisateur est admin
-  if (!(await isAdmin(request))) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+// GET: récupérer la configuration email
+export async function GET(req: NextRequest) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
+
+  const { data, error } = await executeQuery(
+    'SELECT key, value FROM email_config', []
+  );
+  if (error) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500, headers: corsHeaders() }
+    );
   }
-  
+  // convertir la liste key/value en objet
+  const config: Record<string, string> = {};
+  data.forEach((row: { key: string; value: string }) => {
+    config[row.key] = row.value;
+  });
+  return NextResponse.json(
+    { config },
+    { headers: corsHeaders() }
+  );
+}
+
+// POST: mettre à jour la configuration email
+export async function POST(req: NextRequest) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
+
+  let body: unknown;
   try {
-    const data = await request.json();
-    
-    // Valider les données requises
-    if (!data.host || !data.port || !data.user || !data.fromEmail) {
-      return NextResponse.json(
-        { error: 'Les champs obligatoires sont incomplets' },
-        { status: 400 }
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { error: 'Requête JSON invalide' },
+      { status: 400, headers: corsHeaders() }
+    );
+  }
+
+  const parse = configSchema.safeParse(body);
+  if (!parse.success) {
+    return NextResponse.json(
+      { error: parse.error.format() },
+      { status: 422, headers: corsHeaders() }
+    );
+  }
+
+  try {
+    const entries = Object.entries(parse.data);
+    for (const [key, value] of entries) {
+      await executeQuery(
+        `INSERT INTO email_config(key, value) VALUES ($1, $2)
+         ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value`,
+        [key, String(value)]
       );
     }
-    
-    // Si on a une table settings dans la DB, on peut sauvegarder dedans
-    try {
-      // Mise à jour des settings dans la DB
-      const settingsToUpdate = [
-        { key: 'email_host', value: data.host },
-        { key: 'email_port', value: data.port },
-        { key: 'email_secure', value: data.secure ? 'true' : 'false' },
-        { key: 'email_user', value: data.user },
-        { key: 'email_from_name', value: data.fromName },
-        { key: 'email_from', value: data.fromEmail }
-      ];
-      
-      // Si un nouveau mot de passe est fourni, l'ajouter aux paramètres à mettre à jour
-      if (data.password && data.password !== '••••••••') {
-        settingsToUpdate.push({ key: 'email_pass', value: data.password });
-      }
-      
-      // Mise à jour en batch
-      for (const setting of settingsToUpdate) {
-        await prisma.settings.upsert({
-          where: { key: setting.key },
-          update: { value: setting.value },
-          create: { key: setting.key, value: setting.value }
-        });
-      }
-      
-      return NextResponse.json({ success: true });
-    } catch (dbError) {
-      console.error('Erreur lors de la sauvegarde des paramètres en DB:', dbError);
-      
-      // Si échec de sauvegarde en DB, on peut informer l'utilisateur
-      return NextResponse.json({ 
-        warning: 'Les paramètres ont été enregistrés en mémoire mais ne seront pas persistants. Veuillez configurer les variables d\'environnement.',
-        success: true 
-      });
-    }
-  } catch (error) {
-    console.error('Erreur lors de la mise à jour de la configuration email:', error);
     return NextResponse.json(
-      { error: 'Impossible de mettre à jour la configuration' },
-      { status: 500 }
+      { message: 'Configuration mise à jour' },
+      { headers: corsHeaders() }
+    );
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message },
+      { status: 500, headers: corsHeaders() }
     );
   }
 }

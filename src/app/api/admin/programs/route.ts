@@ -1,133 +1,164 @@
-import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { withAdminAuthApp } from "../../../../lib/admin-middleware-app";
 
-/**
- * Gestion des requêtes GET pour obtenir des programmes (tous ou un seul)
- */
-export const GET = withAdminAuthApp(async (request: Request) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const programId = searchParams.get("id");
-    
-    if (programId) {
-      // Get single program
-      const program = await prisma.program.findUnique({
-        where: { id: programId },
-      });
-      
-      if (!program) {
-        return NextResponse.json({ error: "Programme non trouvé" }, { status: 404 });
-      }
-      
-      return NextResponse.json(program);
-    } else {
-      // Get all programs
-      const programs = await prisma.program.findMany({
-        orderBy: { createdAt: "desc" },
-      });
-      
-      return NextResponse.json(programs);
-    }
-  } catch (error: any) {
-    console.error("Error in admin/programs API (GET):", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
+import { z } from 'zod';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuth } from '@clerk/nextjs/server';
+import prisma from '../../../../lib/prisma';
+import { corsHeaders } from '../../../../lib/api-middleware-app';
+
+// Schéma Zod pour validation des programmes
+const programSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1),
+  description: z.string().min(1),
+  image_url: z.string().url().optional(),
+  category: z.string().optional(),
+  price: z.number().nonnegative(),
+  duration_weeks: z.number().int().positive().optional(),
+  level: z.string().optional(),
+  featured: z.boolean().optional()
 });
 
-/**
- * Gestion des requêtes POST pour créer un nouveau programme
- */
-export const POST = withAdminAuthApp(async (request: Request) => {
-  try {
-    const body = await request.json();
-    
-    if (!body.name) {
-      return NextResponse.json({ error: "Nom du programme requis" }, { status: 400 });
-    }
-    
-    // Create new program
-    const newProgram = await prisma.program.create({
-      data: {
-        name: body.name,
-        description: body.description || "",
-        price: parseFloat(body.price) || 0,
-        downloadUrl: body.downloadUrl || "",
-        thumbnailUrl: body.thumbnailUrl || "",
-      },
-    });
-    
-    return NextResponse.json(newProgram, { status: 201 });
-  } catch (error: any) {
-    console.error("Error in admin/programs API (POST):", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+// Vérification du rôle admin
+function enforceAdmin(req: NextRequest) {
+  const { userId, sessionClaims } = getAuth(req);
+  if (!userId || sessionClaims?.role !== 'admin') {
+    return NextResponse.json(
+      { error: 'Accès réservé aux administrateurs' },
+      { status: 403, headers: corsHeaders() }
+    );
   }
-});
-
-/**
- * Gestion des requêtes PUT pour mettre à jour un programme
- */
-export const PUT = withAdminAuthApp(async (request: Request) => {
-  try {
-    const body = await request.json();
-    
-    if (!body.id) {
-      return NextResponse.json({ error: "ID du programme requis" }, { status: 400 });
-    }
-    
-    // Update program
-    const updatedProgram = await prisma.program.update({
-      where: { id: body.id },
-      data: {
-        name: body.name,
-        description: body.description,
-        price: parseFloat(body.price),
-        downloadUrl: body.downloadUrl,
-        thumbnailUrl: body.thumbnailUrl,
-      },
-    });
-    
-    return NextResponse.json(updatedProgram);
-  } catch (error: any) {
-    console.error("Error in admin/programs API (PUT):", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
-});
-
-/**
- * Gestion des requêtes DELETE pour supprimer un programme
- */
-export const DELETE = withAdminAuthApp(async (request: Request) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const programId = searchParams.get("id");
-    
-    if (!programId) {
-      return NextResponse.json({ error: "ID du programme requis" }, { status: 400 });
-    }
-    
-    // Delete program
-    const deletedProgram = await prisma.program.delete({
-      where: { id: programId },
-    });
-    
-    return NextResponse.json({ success: true, program: deletedProgram });
-  } catch (error: any) {
-    console.error("Error in admin/programs API (DELETE):", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
-});
-
-/**
- * Gestion des requêtes OPTIONS pour CORS
- */
-export async function OPTIONS() {
-  return NextResponse.json({}, { status: 200 });
+  return null;
 }
 
-/**
- * Gestion des autres méthodes HTTP non supportées
- */
-export const PATCH = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
+// GET: liste des programmes
+export async function GET(req: NextRequest) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
+
+  try {
+    const programs = await prisma.program.findMany({ orderBy: { created_at: 'desc' } });
+    return NextResponse.json({ programs }, { headers: corsHeaders() });
+  } catch (err: any) {
+    console.error('Erreur GET programs:', err);
+    return NextResponse.json(
+      { error: 'Impossible de récupérer les programmes' },
+      { status: 500, headers: corsHeaders() }
+    );
+  }
+}
+
+// POST: création d'un programme
+export async function POST(req: NextRequest) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { error: 'Requête JSON invalide' },
+      { status: 400, headers: corsHeaders() }
+    );
+  }
+
+  const parse = programSchema.safeParse(body);
+  if (!parse.success) {
+    return NextResponse.json(
+      { error: parse.error.format() },
+      { status: 422, headers: corsHeaders() }
+    );
+  }
+
+  try {
+    const data = parse.data;
+    const program = await prisma.program.create({ data: {
+      name: data.name,
+      description: data.description,
+      image_url: data.image_url,
+      category: data.category,
+      price: data.price,
+      duration_weeks: data.duration_weeks,
+      level: data.level,
+      featured: data.featured ?? false
+    }});
+    return NextResponse.json({ program }, { status: 201, headers: corsHeaders() });
+  } catch (err: any) {
+    console.error('Erreur POST program:', err);
+    return NextResponse.json(
+      { error: 'Impossible de créer le programme' },
+      { status: 500, headers: corsHeaders() }
+    );
+  }
+}
+
+// PUT: mise à jour d'un programme
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
+
+  const { id } = params;
+  if (!id) {
+    return NextResponse.json(
+      { error: 'ID du programme requis' },
+      { status: 400, headers: corsHeaders() }
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { error: 'Requête JSON invalide' },
+      { status: 400, headers: corsHeaders() }
+    );
+  }
+
+  const parse = programSchema.partial().safeParse(body);
+  if (!parse.success) {
+    return NextResponse.json(
+      { error: parse.error.format() },
+      { status: 422, headers: corsHeaders() }
+    );
+  }
+
+  try {
+    const program = await prisma.program.update({
+      where: { id },
+      data: parse.data as any
+    });
+    return NextResponse.json({ program }, { headers: corsHeaders() });
+  } catch (err: any) {
+    console.error('Erreur PUT program:', err);
+    return NextResponse.json(
+      { error: 'Impossible de mettre à jour le programme' },
+      { status: 500, headers: corsHeaders() }
+    );
+  }
+}
+
+// DELETE: suppression d'un programme
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
+
+  const { id } = params;
+  if (!id) {
+    return NextResponse.json(
+      { error: 'ID du programme requis' },
+      { status: 400, headers: corsHeaders() }
+    );
+  }
+
+  try {
+    await prisma.program.delete({ where: { id } });
+    return NextResponse.json({ success: true }, { headers: corsHeaders() });
+  } catch (err: any) {
+    console.error('Erreur DELETE program:', err);
+    return NextResponse.json(
+      { error: 'Impossible de supprimer le programme' },
+      { status: 500, headers: corsHeaders() }
+    );
+  }
+}

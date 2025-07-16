@@ -1,88 +1,70 @@
+
+import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdmin } from '../../../../lib/auth-app';
-import { prisma } from '../../../../lib/prisma';
+import { getAuth } from '@clerk/nextjs/server';
+import prisma from '../../../../lib/prisma';
+import { corsHeaders } from '../../../../lib/api-middleware-app';
 
-/**
- * Récupérer tous les templates d'email
- */
-export async function GET(request: NextRequest) {
-  // Vérifier que l'utilisateur est admin
-  if (!(await isAdmin(request))) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+const templateSchema = z.object({
+  name: z.string().min(1),
+  subject: z.string().min(1),
+  content: z.string().min(1),
+  type: z.string().optional()
+});
+
+function enforceAdmin(req: NextRequest) {
+  const { userId, sessionClaims } = getAuth(req);
+  if (!userId || sessionClaims?.role !== 'admin') {
+    return NextResponse.json(
+      { error: 'Accès réservé aux administrateurs' },
+      { status: 403, headers: corsHeaders() }
+    );
   }
+  return null;
+}
 
+export async function GET(req: NextRequest) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
   try {
-    // Récupérer tous les templates depuis la DB
-    const templates = await prisma.emailTemplate.findMany({
-      orderBy: {
-        name: 'asc'
-      }
-    });
-
-    return NextResponse.json(templates);
-  } catch (error) {
-    console.error('Erreur lors de la récupération des templates:', error);
+    const templates = await prisma.emailTemplate.findMany({ orderBy: { name: 'asc' } });
+    return NextResponse.json({ templates }, { headers: corsHeaders() });
+  } catch (err: any) {
+    console.error('Erreur GET templates:', err);
     return NextResponse.json(
       { error: 'Impossible de récupérer les templates' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders() }
     );
   }
 }
 
-/**
- * Créer ou mettre à jour un template d'email
- */
-export async function POST(request: NextRequest) {
-  // Vérifier que l'utilisateur est admin
-  if (!(await isAdmin(request))) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-  }
-
+export async function POST(req: NextRequest) {
+  const adminCheck = enforceAdmin(req);
+  if (adminCheck) return adminCheck;
+  let body: unknown;
   try {
-    const data = await request.json();
-
-    // Valider les données requises
-    if (!data.name || !data.subject || !data.content) {
-      return NextResponse.json(
-        { error: 'Les champs nom, sujet et contenu sont requis' },
-        { status: 400 }
-      );
-    }
-
-    let template;
-
-    // Mise à jour ou création selon la présence d'un ID
-    if (data.id) {
-      // Mise à jour
-      template = await prisma.emailTemplate.update({
-        where: {
-          id: data.id
-        },
-        data: {
-          name: data.name,
-          subject: data.subject,
-          content: data.content,
-          type: data.type || 'custom'
-        }
-      });
-    } else {
-      // Création
-      template = await prisma.emailTemplate.create({
-        data: {
-          name: data.name,
-          subject: data.subject,
-          content: data.content,
-          type: data.type || 'custom'
-        }
-      });
-    }
-
-    return NextResponse.json(template);
-  } catch (error) {
-    console.error('Erreur lors de l\'enregistrement du template:', error);
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { error: 'JSON invalide' },
+      { status: 400, headers: corsHeaders() }
+    );
+  }
+  const parse = templateSchema.safeParse(body);
+  if (!parse.success) {
+    return NextResponse.json(
+      { error: parse.error.format() },
+      { status: 422, headers: corsHeaders() }
+    );
+  }
+  try {
+    const template = await prisma.emailTemplate.create({ data: parse.data as any });
+    return NextResponse.json({ template }, { headers: corsHeaders() });
+  } catch (err: any) {
+    console.error('Erreur POST template:', err);
     return NextResponse.json(
       { error: 'Impossible d\'enregistrer le template' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders() }
     );
   }
 }

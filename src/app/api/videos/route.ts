@@ -21,28 +21,19 @@ function enforceAuth(req: NextRequest, needsAdmin = false) {
 export async function GET(req: NextRequest) {
   const forbidden = enforceAuth(req);
   if (forbidden) return forbidden;
-  const { data, error } = await executeQuery('SELECT * FROM comments;', []);
+  const { data, error } = await executeQuery('SELECT * FROM videos;', []);
   if (error) throw error;
-  return NextResponse.json({ comments: data }, { headers: corsHeaders() });
+  return NextResponse.json({ videos: data }, { headers: corsHeaders() });
 }
 
 export async function POST(req: NextRequest) {
-  const forbidden = enforceAuth(req);
-  if (forbidden) return forbidden;
-  const body = await req.json();
-  const { userId } = getAuth(req);
-  const { data, error } = await executeQuery(
-    'INSERT INTO comments (content, user_id) VALUES ($1, $2) RETURNING *;',
-    [body.content, userId]
-  );
-  if (error) throw error;
-  return NextResponse.json({ comment: data[0] }, { status: 201, headers: corsHeaders() });
-}
-
-export async function DELETE(req: NextRequest) {
   const forbidden = enforceAuth(req, true);
   if (forbidden) return forbidden;
-  const { id } = await req.json();
-  await executeQuery('DELETE FROM comments WHERE id = $1;', [id]);
-  return NextResponse.json(null, { status: 204, headers: corsHeaders() });
+  const body = await req.json();
+  const { data, error } = await executeQuery(
+    'INSERT INTO videos (url, title) VALUES ($1, $2) RETURNING *;',
+    [body.url, body.title]
+  );
+  if (error) throw error;
+  return NextResponse.json({ video: data[0] }, { status: 201, headers: corsHeaders() });
 }
