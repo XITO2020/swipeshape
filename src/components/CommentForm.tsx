@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAppStore } from '../lib/store';
 import { AlertCircle, Lock } from 'lucide-react';

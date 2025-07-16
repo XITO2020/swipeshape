@@ -25,7 +25,7 @@ api.interceptors.request.use(
 );
 
 // Importer le router singleton de Next.js
-import Router from 'next/router';
+import { useRouter } from 'next/navigation';
 
 // Response interceptor to handle common errors
 api.interceptors.response.use(

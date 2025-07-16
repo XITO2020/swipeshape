@@ -1,6 +1,6 @@
 // src/pages/admin/articles.tsx
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/router";
+import { useRouter } from 'next/router';
 import { Article } from "../../types";
 import Button from "../../components/ui/Button";
 import { useAppStore } from "../../lib/store";

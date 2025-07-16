@@ -14,12 +14,18 @@ const nextConfig = {
     unoptimized: true,
   },
   eslint: {
+    // On n’interrompt pas le build pour les erreurs ESLint
     ignoreDuringBuilds: true,
   },
   typescript: {
+    // On n’interrompt pas le build pour les erreurs de type
     ignoreBuildErrors: true,
   },
-  webpack(config, { isServer }) {
+  pageExtensions: ['ts', 'tsx'],
+  experimental: {
+    optimizeCss: true
+  },
+  webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       '@': resolve(__dirname, 'src'),
@@ -35,16 +41,13 @@ const nextConfig = {
       use: 'null-loader',
     });
 
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        path: false,
-        crypto: false,
-        net: false,
-        tls: false,
-      };
-    }
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+      crypto: false,
+      stream: false
+    };
 
     return config;
   },

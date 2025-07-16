@@ -16,12 +16,13 @@ function enforceAdmin(req: NextRequest) {
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
   const adminCheck = enforceAdmin(req);
   if (adminCheck) return adminCheck;
 
-  const { id } = params;
   if (!id) {
     return NextResponse.json(
       { error: 'ID requis' },

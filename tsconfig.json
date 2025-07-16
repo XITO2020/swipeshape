@@ -34,6 +34,17 @@
       ]
     },
     "incremental": true,
+    "typeRoots": [
+      "node_modules/@types",
+      "node_modules/next/types"
+    ],
+    "types": [
+      "next",
+      "next/server",
+      "next/headers",
+      "next/navigation",
+      "next/image-types/global"
+    ],
     "plugins": [
       {
         "name": "next"
@@ -41,6 +52,7 @@
     ]
   },
   "include": [
+    "next-env.d.ts",
     "prisma",
     "src",
     ".next/types/**/*.ts"
