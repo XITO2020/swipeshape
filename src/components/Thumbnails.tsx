@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
-import styles from './Thumbnails.module.css';
+import styles from './Thumbnails.module.vanilla.css';
 import { searchArticles } from '../lib/supabase';
 import { Article } from '../types';
 
