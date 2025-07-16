@@ -59,3 +59,4 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
+console.log("Forcing recompile");
