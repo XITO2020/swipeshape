@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+      "check:tailwind": "npx tailwindcss --config tailwind.config.js -i ./src/styles/globals.css -o /dev/null",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate"
