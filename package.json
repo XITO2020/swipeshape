@@ -1,6 +1,9 @@
 {
   "name": "swipeshape",
   "version": "2.4.0",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -43,10 +46,10 @@
     "nodemailer": "^6.10.1",
     "pdfkit": "^0.13.0",
     "pg": "^8.16.3",
-    "react": "^18.3.1",
+    "react": "18.2",
     "react-bootstrap": "^2.10.10",
     "react-datepicker": "^4.25.0",
-    "react-dom": "^18.3.1",
+    "react-dom": "18.2",
     "react-hook-form": "^7.60.0",
     "react-hot-toast": "^2.5.2",
     "react-quill": "^2.0.0",
