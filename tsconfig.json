@@ -39,11 +39,7 @@
       "node_modules/next/types"
     ],
     "types": [
-      "next",
-      "next/server",
-      "next/headers",
-      "next/navigation",
-      "next/image-types/global"
+      "next"
     ],
     "plugins": [
       {

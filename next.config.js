@@ -23,7 +23,8 @@ const nextConfig = {
   },
   pageExtensions: ['ts', 'tsx'],
   experimental: {
-    optimizeCss: true
+    optimizeCss: true,
+    optimizePackageImports: ['tailwindcss', 'autoprefixer']
   },
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
