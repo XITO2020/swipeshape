@@ -5,6 +5,7 @@
     "node": "20.x"
   },
   "scripts": {
+    "postinstall": "npm install tailwindcss postcss autoprefixer",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
