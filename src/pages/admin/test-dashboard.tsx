@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
-import styles from '../../styles/AdminDashboard.module.css';
 
 interface Metric {
   label: string;
@@ -62,18 +61,18 @@ export default function TestDashboard() {
       <Head>
         <title>Admin Dashboard</title>
       </Head>
-      <main className={styles.dashboard}>
-        <h1 className={styles.title}>Dashboard</h1>
-        {loading && <p className={styles.loading}>Chargement des statistiques...</p>}
-        {error && <p className={styles.error}>{error}</p>}
-        <div className={styles.grid}>
+      <main className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-6 p-4">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">Dashboard</h1>
+        {loading && <p className="text-gray-600 italic">Chargement des statistiques...</p>}
+        {error && <p className="text-red-600 font-bold">{error}</p>}
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-6 p-4">
           {metrics.map((m, i) => (
-            <Link href={m.link} key={i} className={styles.card} style={{ borderColor: m.color }}>
-              <div className={styles.cardHeader} style={{ backgroundColor: m.color + '20' }}>
+            <Link href={m.link} key={i} className="bg-white rounded-lg p-6 shadow-sm transition-transform duration-200 hover:transform hover:-translate-y-1" style={{ borderColor: m.color }}>
+              <div className="flex items-center gap-2 mb-4" style={{ backgroundColor: m.color + '20' }}>
                 {m.icon}
-                <h2 className={styles.cardLabel}>{m.label}</h2>
+                <h2 className="text-xl font-medium text-gray-800">{m.label}</h2>
               </div>
-              <p className={styles.cardCount}>{m.count}</p>
+              <p className="text-2xl font-bold text-gray-900">{m.count}</p>
             </Link>
           ))}
         </div>

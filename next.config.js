@@ -14,17 +14,43 @@ const nextConfig = {
     unoptimized: true,
   },
   eslint: {
-    // On n’interrompt pas le build pour les erreurs ESLint
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // On n’interrompt pas le build pour les erreurs de type
     ignoreBuildErrors: true,
   },
   pageExtensions: ['ts', 'tsx'],
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['tailwindcss', 'autoprefixer']
+  },
+  webpack: (config) => {
+    // Support for .module.pure.css files
+    config.module.rules.push({
+      test: /\.module\.pure\.css$/,
+      use: [
+        'style-loader',
+        {
+          loader: 'css-loader',
+          options: {
+            modules: true,
+            importLoaders: 1,
+            localIdentName: '[name]__[local]__[hash:base64:5]'
+          }
+        }
+      ]
+    });
+
+    // Support for .vanilla.css files
+    config.module.rules.push({
+      test: /\.vanilla\.css$/,
+      use: [
+        'style-loader',
+        'css-loader'
+      ]
+    });
+
+    return config;
   },
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
