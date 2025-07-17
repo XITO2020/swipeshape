@@ -1,12 +1,38 @@
 import { createClient } from '@supabase/supabase-js';
 import { Program, Article, Comment, Event, User, Video, Test, TestQuestion, UserTestResult } from '@/types';
 import { mockArticles, mockEvents, mockPrograms, mockUsers, mockVideos, mockTests, mockTestQuestions, mockUserTestResults } from '../lib/mockData';
-const URL   = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const ANON  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const ADMIN = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321'
+const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key'
+const ADMIN = process.env.SUPABASE_SERVICE_ROLE_KEY || 'your-admin-key'
+
+// Vérifier que les variables d'environnement sont définies
+if (!URL || !ANON) {
+  console.error('⚠️ Les variables d\'environnement manquantes peuvent causer des problèmes de connexion')
+}
 
 // Créer le client Supabase avec la configuration recommandée par Supabase
-export const supabase      = createClient(URL, ANON)
+export const supabase = createClient(URL, ANON, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+  global: {
+    headers: {
+      'X-Client-Info': `supabase-js/${process.env.NEXT_PUBLIC_SUPABASE_VERSION || 'latest'}`
+    },
+    fetch: async (...args) => {
+      try {
+        return await fetch(...args)
+      } catch (error) {
+        console.error('Erreur de réseau lors de la connexion à Supabase:', error)
+        throw error
+      }
+    }
+  }
+})
+
+// Créer un client admin avec des options minimales
 export const supabaseAdmin = createClient(URL, ADMIN)
 
 // Flag to control whether to use mock data
