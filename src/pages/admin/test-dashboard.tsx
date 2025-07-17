@@ -12,12 +12,12 @@ interface Metric {
 }
 
 const icons = {
-  articles: <svg className={styles.icon} viewBox="0 0 24 24"><path d="M4 4h16v2H4zM4 8h16v2H4zM4 12h16v2H4z"/></svg>,
-  programs: <svg className={styles.icon} viewBox="0 0 24 24"><path d="M12 2l4 4h-3v6h-2V6H8z"/></svg>,
-  subscribers: <svg className={styles.icon} viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22v-2c0-3.3 2.7-6 6-6h4c3.3 0 6 2.7 6 6v2"/></svg>,
-  users: <svg className={styles.icon} viewBox="0 0 24 24"><path d="M16 7a4 4 0 10-8 0 4 4 0 008 0zm-8 9c-4 0-6 2-6 4v1h12v-1c0-2-2-4-6-4z"/></svg>,
-  videos: <svg className={styles.icon} viewBox="0 0 24 24"><path d="M10 8l6 4-6 4V8z"/></svg>,
-  comments: <svg className={styles.icon} viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/></svg>
+  articles: <svg className="w-6 h-6 fill-current mr-2" viewBox="0 0 24 24"><path d="M4 4h16v2H4zM4 8h16v2H4zM4 12h16v2H4z"/></svg>,
+  programs: <svg className="w-6 h-6 fill-current mr-2" viewBox="0 0 24 24"><path d="M12 2l4 4h-3v6h-2V6H8z"/></svg>,
+  subscribers: <svg className="w-6 h-6 fill-current mr-2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22v-2c0-3.3 2.7-6 6-6h4c3.3 0 6 2.7 6 6v2"/></svg>,
+  users: <svg className="w-6 h-6 fill-current mr-2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 10-8 0 4 4 0 008 0zm-8 9c-4 0-6 2-6 4v1h12v-1c0-2-2-4-6-4z"/></svg>,
+  videos: <svg className="w-6 h-6 fill-current mr-2" viewBox="0 0 24 24"><path d="M10 8l6 4-6 4V8z"/></svg>,
+  comments: <svg className="w-6 h-6 fill-current mr-2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/></svg>
 };
 
 export default function TestDashboard() {
