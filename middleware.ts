@@ -3,14 +3,19 @@ import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC_PATHS: (string | RegExp)[] = [
-  "/", "/about", "/contact",
-  "/login", "/signup", "/forgot-password", "/reset-password",
-  /^\/blog(?:\/.*)?$/,
-  /^\/programs(?:\/.*)?$/,
-  /^\/api\/public(?:\/.*)?$/,
-  /^\/api\/webhooks(?:\/.*)?$/,
-  /^\/api\/auth\/jwt(?:\/.*)?$/,
+const PUBLIC_PATHS: string[] = [
+  "/",
+  "/about",
+  "/contact",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/blog",
+  "/programs",
+  "/api/public",
+  "/api/webhooks",
+  "/api/auth/jwt",
 ];
 
 export default function middleware(req: NextRequest) {
@@ -18,10 +23,7 @@ export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // 1️⃣ Allow all public paths through
-  if (PUBLIC_PATHS.some(p => typeof p === "string"
-      ? p === pathname
-      : p.test(pathname)
-    )) {
+  if (PUBLIC_PATHS.some(path => pathname.startsWith(path))) {
     return NextResponse.next();
   }
 
@@ -54,5 +56,15 @@ export default function middleware(req: NextRequest) {
 
 // Apply to everything except Next.js static assets
 export const config = {
-  matcher: ["/((?!_next|static|favicon.ico).*)"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next
+     * - static
+     * - favicon.ico
+     * - api (except webhook paths)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/api/webhooks/stripe',
+  ],
 };

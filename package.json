@@ -5,14 +5,10 @@
     "node": "20.x"
   },
   "scripts": {
-    "postinstall": "npm install tailwindcss postcss autoprefixer",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "postinstall": "prisma generate"
-  },
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^5.7.5",
@@ -43,12 +39,14 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.298.0",
     "micro": "^10.0.1",
-    "next": "^15.4.1",
+    "next": "^14.0.4",
     "nodemailer": "^6.10.1",
     "pdfkit": "^0.13.0",
     "pg": "^8.16.3",
     "react": "18.2",
     "react-bootstrap": "^2.10.10",
+    "tailwindcss": "^3.4.1",
+    "autoprefixer": "^10.4.17",
     "react-datepicker": "^4.25.0",
     "react-dom": "18.2",
     "react-hook-form": "^7.60.0",
@@ -74,11 +72,9 @@
     "critters": "^0.0.23",
     "dotenv": "^16.6.1",
     "eslint": "^9.31.0",
-    "postcss": "^8.4.35",
-    "postcss-import": "15.1.0",
-    "postcss-nesting": "11.0.1",
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.17",
+    "postcss": "^8.4.35",
     "typescript": "^5.8.3"
   }
 }

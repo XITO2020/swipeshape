@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { Program, Article, Comment, Event, User, Video, Test, TestQuestion, UserTestResult } from '@/types';
 import { mockArticles, mockEvents, mockPrograms, mockUsers, mockVideos, mockTests, mockTestQuestions, mockUserTestResults } from '../lib/mockData';
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321'
-const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key'
+export const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321'
+export const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key'
 const ADMIN = process.env.SUPABASE_SERVICE_ROLE_KEY || 'your-admin-key'
 
 // Vérifier que les variables d'environnement sont définies

@@ -14,16 +14,14 @@ const nextConfig = {
     unoptimized: true,
   },
   webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.resolve.fallback = { fs: false, path: false }
-    }
-    return config
+    config.resolve.fallback = { fs: false, path: false };
+    return config;
   },
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   pageExtensions: ['ts', 'tsx'],
   experimental: {
