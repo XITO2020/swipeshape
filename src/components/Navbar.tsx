@@ -1,10 +1,9 @@
-// src/components/Navbar.tsx
 import React from "react";
 import Link from "next/link";
-import { useAuth } from "../lib/auth";
+import { UserButton, useUser } from "@clerk/nextjs";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, isSignedIn } = useUser();
 
   return (
     <nav className="bg-white shadow">
@@ -19,22 +18,17 @@ export default function Navbar() {
           <Link href="/blog" className="text-gray-700 hover:text-violet-600">
             Blog
           </Link>
-          {user ? (
+          {isSignedIn ? (
             <>
               <Link href="/dashboard" className="text-gray-700 hover:text-violet-600">
                 Tableau de bord
               </Link>
-              {user.role === "admin" && (
+              {user?.publicMetadata?.role === "admin" && (
                 <Link href="/admin" className="text-gray-700 hover:text-violet-600">
                   Admin
                 </Link>
               )}
-              <button
-                onClick={logout}
-                className="text-gray-700 hover:text-red-600"
-              >
-                Déconnexion
-              </button>
+              <UserButton afterSignOutUrl="/login" />
             </>
           ) : (
             <>

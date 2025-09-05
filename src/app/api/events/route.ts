@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
-import { executeQuery } from '../../../lib/db';
+import { supabaseAdmin } from '@/lib/supabase';
 import { corsHeaders } from '../../../lib/api-middleware-app';
 
 function enforceAuth(req: NextRequest, needsAdmin = false) {
@@ -21,19 +21,23 @@ function enforceAuth(req: NextRequest, needsAdmin = false) {
 export async function GET(req: NextRequest) {
   const forbidden = enforceAuth(req);
   if (forbidden) return forbidden;
-  const { data, error } = await executeQuery('SELECT * FROM events;', []);
+  const { data: events, error } = await supabaseAdmin
+    .from('events')
+    .select('*')
+    .order('date', { ascending: true });
   if (error) throw error;
-  return NextResponse.json({ events: data }, { headers: corsHeaders() });
+  return NextResponse.json({ events }, { headers: corsHeaders() });
 }
 
 export async function POST(req: NextRequest) {
   const forbidden = enforceAuth(req, true);
   if (forbidden) return forbidden;
   const body = await req.json();
-  const { data, error } = await executeQuery(
-    'INSERT INTO events (title, date) VALUES ($1, $2) RETURNING *;',
-    [body.title, body.date]
-  );
+  const { data, error } = await supabaseAdmin
+    .from('events')
+    .insert([{ title: body.title, date: body.date }])
+    .select()
+    .single();
   if (error) throw error;
-  return NextResponse.json({ event: data[0] }, { status: 201, headers: corsHeaders() });
+  return NextResponse.json({ event: data }, { status: 201, headers: corsHeaders() });
 }

@@ -18,11 +18,19 @@ function enforceAuth(req: NextRequest, needsAdmin = false) {
 }
 
 // GET: voir l'état d'abonnement de l'utilisateur
+import { supabaseAdmin } from "@/lib/supabase";
 export async function GET(req: NextRequest) {
   const forbidden = enforceAuth(req);
   if (forbidden) return forbidden;
-  // TODO: vérifier en DB si userId est abonné
-  const subscribed = true;
+  const { userId } = getAuth(req);
+  if (!userId) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+  const { data, error } = await supabaseAdmin
+    .from('newsletter_subscribers')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const subscribed = !!data;
   return NextResponse.json({ subscribed });
 }
 
@@ -30,7 +38,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const forbidden = enforceAuth(req);
   if (forbidden) return forbidden;
-  // TODO: ajouter userId à la liste d'abonnés
+  const { userId } = getAuth(req);
+  if (!userId) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+  const { error } = await supabaseAdmin
+    .from('newsletter_subscribers')
+    .insert([{ user_id: userId }]);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
 
@@ -38,6 +51,12 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const forbidden = enforceAuth(req);
   if (forbidden) return forbidden;
-  // TODO: retirer userId de la liste d'abonnés
+  const { userId } = getAuth(req);
+  if (!userId) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+  const { error } = await supabaseAdmin
+    .from('newsletter_subscribers')
+    .delete()
+    .eq('user_id', userId);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }

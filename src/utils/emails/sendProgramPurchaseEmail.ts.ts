@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import createTransport from 'nodemailer'
 
 // Envoi d'un e-mail avec un lien de téléchargement sécurisé via SMTP/Nodemailer
 export async function sendProgramPurchaseEmail(
@@ -18,7 +18,7 @@ export async function sendProgramPurchaseEmail(
   }
 
   // Création du transporter SMTP
-  const transporter = nodemailer.createTransport({
+  const transporter = createTransport({
     host,
     port,
     secure,

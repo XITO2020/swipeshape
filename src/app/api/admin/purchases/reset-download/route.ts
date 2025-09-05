@@ -1,69 +1,89 @@
-import { NextResponse } from 'next/server';
-import { executeQuery } from '../../../db';
-import { withAdminAuthApp } from '@/lib/admin-middleware-app';
+import { z } from 'zod'
+import { NextRequest, NextResponse } from 'next/server'
+import { withAdmin } from '@/lib/admin-middleware-app'
+import { supabaseAdmin } from '@/lib/supabase'
+import { corsHeaders } from '@/lib/api-middleware-app'
+import { sendEmail } from '@/lib/emailClient'
 
-/**
- * Gestion des requêtes POST pour réinitialiser le compteur de téléchargements
- */
-export const POST = withAdminAuthApp(async (request: Request) => {
+const resetSchema = z.object({
+  purchaseId: z.string().uuid()
+})
+
+export const POST = withAdmin(async (req: NextRequest) => {
+  let body: unknown
   try {
-    const body = await request.json();
-    const { purchaseId } = body;
-
-    if (!purchaseId) {
-      return NextResponse.json({ error: 'ID d\'achat manquant' }, { status: 400 });
-    }
-
-    // Réinitialiser le compteur de téléchargements
-    const { data, error } = await executeQuery(
-      'UPDATE purchases SET download_count = 0 WHERE id = $1 RETURNING *',
-      [purchaseId]
-    );
-
-    if (error || !data || data.length === 0) {
-      console.error('Erreur lors de la réinitialisation du compteur:', error);
-      return NextResponse.json({ 
-        error: 'Erreur lors de la réinitialisation du compteur',
-        details: error
-      }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Compteur de téléchargements réinitialisé avec succès',
-      purchase: data[0]
-    });
-  } catch (error: any) {
-    console.error('Erreur serveur:', error);
-    return NextResponse.json({
-      error: 'Erreur serveur',
-      message: error.message || 'Une erreur est survenue lors de la réinitialisation du compteur'
-    }, { status: 500 });
+    body = await req.json()
+  } catch {
+    return NextResponse.json(
+      { error: 'Requête JSON invalide' },
+      { status: 400, headers: corsHeaders() }
+    )
   }
-});
 
-/**
- * Gestion des requêtes OPTIONS pour CORS
- */
-export async function OPTIONS() {
-  return NextResponse.json({}, { status: 200 });
-}
+  const parsed = resetSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.format() },
+      { status: 422, headers: corsHeaders() }
+    )
+  }
+  const { purchaseId } = parsed.data
 
-/**
- * Gestion des autres méthodes HTTP non supportées
- */
-export const GET = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
+  const { data: purchase, error: fetchError } = await supabaseAdmin
+    .from('purchases')
+    .select(`
+      id,
+      userId,
+      programId,
+      createdAt,
+      user:userId(email),
+      program:programId(name)
+    `)
+    .eq('id', purchaseId)
+    .maybeSingle()
 
-export const PUT = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
+  if (fetchError || !purchase) {
+    return NextResponse.json(
+      { error: "Achat introuvable ou erreur BDD" },
+      { status: 404, headers: corsHeaders() }
+    )
+  }
 
-export const DELETE = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
+  try {
+    const to          = purchase.user[0]?.email!
+    const programName = purchase.program[0]?.name!
+    const subject     = `Lien de téléchargement réinitialisé - SwipeShape`
+    const htmlContent = `
+      <p>Bonjour,</p>
+      <p>Votre lien de téléchargement pour <strong>${programName}</strong> a été réinitialisé.</p>
+      <p>Rendez-vous sur votre espace client pour télécharger à nouveau.</p>
+      <p>&copy; ${new Date().getFullYear()} SwipeShape</p>
+    `
+    const textContent = `
+Bonjour,
+Votre lien de téléchargement pour ${programName} a été réinitialisé.
+Rendez-vous sur votre espace client pour télécharger à nouveau.
+© ${new Date().getFullYear()} SwipeShape
+    `.trim()
 
-export const PATCH = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
+    await sendEmail(
+      to,
+      subject,
+      htmlContent,
+      textContent,
+      'SwipeShape',
+      process.env.EMAIL_FROM || 'no-reply@swipeshape.com'
+    )
+
+    return NextResponse.json(
+      { success: true, message: `Lien renvoyé à ${to}` },
+      { status: 200, headers: corsHeaders() }
+    )
+  } catch (err: any) {
+    console.error('Erreur reset-download:', err)
+    return NextResponse.json(
+      { error: "Impossible d'envoyer l'email", details: err.message },
+      { status: 500, headers: corsHeaders() }
+    )
+  }
+})

@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
-import { executeQuery } from '../../../lib/db';
+import { supabaseAdmin } from '@/lib/supabase';
 import { corsHeaders } from '../../../lib/api-middleware-app';
 
 function enforceAuth(req: NextRequest, needsAdmin = false) {
@@ -21,9 +21,12 @@ function enforceAuth(req: NextRequest, needsAdmin = false) {
 export async function GET(req: NextRequest) {
   const forbidden = enforceAuth(req);
   if (forbidden) return forbidden;
-  const { data, error } = await executeQuery('SELECT * FROM comments;', []);
+  const { data: comments, error } = await supabaseAdmin
+    .from('comments')
+    .select('*')
+    .order('created_at', { ascending: true });
   if (error) throw error;
-  return NextResponse.json({ comments: data }, { headers: corsHeaders() });
+  return NextResponse.json({ comments }, { headers: corsHeaders() });
 }
 
 export async function POST(req: NextRequest) {
@@ -31,18 +34,23 @@ export async function POST(req: NextRequest) {
   if (forbidden) return forbidden;
   const body = await req.json();
   const { userId } = getAuth(req);
-  const { data, error } = await executeQuery(
-    'INSERT INTO comments (content, user_id) VALUES ($1, $2) RETURNING *;',
-    [body.content, userId]
-  );
+  const { data, error } = await supabaseAdmin
+    .from('comments')
+    .insert([{ content: body.content, user_id: userId }])
+    .select()
+    .single();
   if (error) throw error;
-  return NextResponse.json({ comment: data[0] }, { status: 201, headers: corsHeaders() });
+  return NextResponse.json({ comment: data }, { status: 201, headers: corsHeaders() });
 }
 
 export async function DELETE(req: NextRequest) {
   const forbidden = enforceAuth(req, true);
   if (forbidden) return forbidden;
   const { id } = await req.json();
-  await executeQuery('DELETE FROM comments WHERE id = $1;', [id]);
+  const { error } = await supabaseAdmin
+    .from('comments')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
   return NextResponse.json(null, { status: 204, headers: corsHeaders() });
 }

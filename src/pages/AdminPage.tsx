@@ -13,14 +13,7 @@ const ReactQuill = dynamic(() => import('react-quill'), {
   loading: () => <p>Loading editor...</p>
 });
 
-// Import the CSS only on the client side
-const QuillCSS = () => {
-  useEffect(() => {
-    // This code only runs on the client
-    import('react-quill/dist/quill.snow.css');
-  }, []);
-  return null;
-};
+
 
 const AdminPage: React.FC = () => {
   const { isAuthenticated, isAdmin } = useAppStore();
@@ -141,7 +134,7 @@ const AdminPage: React.FC = () => {
 
   return (
     <>
-      <QuillCSS />
+      
     <div className="min-h-screen pt-16 md:pt-0 md:pl-64">
       <div className="max-w-6xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold text-purple-800 mb-6">Admin Dashboard</h1>

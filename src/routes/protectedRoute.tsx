@@ -1,24 +1,25 @@
+// src/routes/protectedRoute.tsx
 import React from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '../lib/auth';
+import { useUser } from '@clerk/nextjs';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-
+  const { isLoaded, user } = useUser();
   const router = useRouter();
-  
-  // Effectue une redirection côté client si l'utilisateur n'est pas connecté
+
   React.useEffect(() => {
-    if (!user) {
-      router.push('/login');
+    // Dès que Clerk est chargé, si pas d'user, redirige vers /login
+    if (isLoaded && !user) {
+      router.replace('/login');
     }
-  }, [user, router]);
-  
-  if (!user) {
-    // Retourne null pendant la redirection
-    return null;
+  }, [isLoaded, user, router]);
+
+  // Tant que Clerk n'est pas prêt ou qu'il n'y a pas d'user, on affiche un loader
+  if (!isLoaded || !user) {
+    return <div>Loading...</div>;
   }
 
+  // Sinon, on rend les enfants protégés
   return <>{children}</>;
 };
 

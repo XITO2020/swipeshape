@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
-import { executeQuery } from "../../../lib/db";
+import { supabaseAdmin } from "@/lib/supabase";
 import { corsHeaders } from "../../../lib/api-middleware-app";
 
 function enforceAuth(req: NextRequest, needsAdmin = false) {
@@ -27,10 +27,10 @@ export async function GET(req: NextRequest) {
   if (forbidden) return forbidden;
 
   try {
-    const { data: newsletters, error } = await executeQuery(
-      'SELECT * FROM newsletters;',
-      []
-    );
+    const { data: newsletters, error } = await supabaseAdmin
+      .from('newsletters')
+      .select('*')
+      .order('created_at', { ascending: false });
     if (error) throw error;
     return NextResponse.json({ newsletters }, { headers: corsHeaders() });
   } catch (err: any) {
@@ -50,13 +50,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { data: createdRows, error } = await executeQuery(
-      `INSERT INTO newsletters (title, content) VALUES ($1, $2) RETURNING *;`,
-      [body.title, body.content]
-    );
+    const { data, error } = await supabaseAdmin
+      .from('newsletters')
+      .insert([{ title: body.title, content: body.content }])
+      .select()
+      .single();
     if (error) throw error;
     return NextResponse.json(
-      { newsletter: createdRows[0] },
+      { newsletter: data },
       { status: 201, headers: corsHeaders() }
     );
   } catch (err: any) {

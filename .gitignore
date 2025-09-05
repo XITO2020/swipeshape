@@ -67,3 +67,4 @@ src/pages/postgres-test.tsx
 src/styles/Home.module.css
 blueprint.txt
 blueprint.zip
+.vercel

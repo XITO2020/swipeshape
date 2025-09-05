@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuth } from '@clerk/nextjs/server'
-import { executeQuery } from '../../../lib/db'
+import { supabaseAdmin } from '@/lib/supabase'
 import { corsHeaders } from '../../../lib/api-middleware-app'
 
 function enforceAuth(req: NextRequest, needsAdmin = false) {
@@ -34,15 +34,16 @@ export async function GET(request: NextRequest) {
         { status: 400, headers: corsHeaders() }
       )
     }
-    const { data: comments, error } = await executeQuery(
-      `SELECT * FROM article_comments WHERE article_id = $1`,
-      [articleId]
-    )
-    if (error) throw error
+    const { data: comments, error } = await supabaseAdmin
+      .from('article_comments')
+      .select('*')
+      .eq('article_id', articleId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
     return NextResponse.json(
       { comments },
       { headers: corsHeaders() }
-    )
+    );
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Erreur serveur' },
@@ -64,13 +65,16 @@ export async function POST(request: NextRequest) {
       VALUES ($1, $2, $3)
       RETURNING *
     `
-    const { data: createdRows, error } = await executeQuery(insertSql, [data.articleId, userId, data.content])
-    if (error) throw error
-    const created = createdRows[0]
+    const { data: created, error } = await supabaseAdmin
+      .from('article_comments')
+      .insert([{ article_id: data.articleId, user_id: userId, content: data.content }])
+      .select()
+      .single();
+    if (error) throw error;
     return NextResponse.json(
       { comment: created },
       { status: 201, headers: corsHeaders() }
-    )
+    );
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Erreur serveur' },
@@ -92,13 +96,17 @@ export async function PUT(request: NextRequest) {
       WHERE id = $2
       RETURNING *
     `
-    const { data: updatedRows, error } = await executeQuery(updateSql, [data.content, data.id])
-    if (error) throw error
-    const updated = updatedRows[0]
+    const { data: updated, error } = await supabaseAdmin
+      .from('article_comments')
+      .update({ content: data.content })
+      .eq('id', data.id)
+      .select()
+      .single();
+    if (error) throw error;
     return NextResponse.json(
       { comment: updated },
       { headers: corsHeaders() }
-    )
+    );
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Erreur serveur' },
@@ -114,8 +122,12 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const { id } = await request.json()
-    await executeQuery(`DELETE FROM article_comments WHERE id = $1`, [id])
-    return NextResponse.json({}, { status: 204, headers: corsHeaders() })
+    const { error } = await supabaseAdmin
+      .from('article_comments')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return NextResponse.json({}, { status: 204, headers: corsHeaders() });
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Erreur serveur' },
@@ -134,13 +146,17 @@ export async function PATCH(request: NextRequest) {
     const updateSql = `
       UPDATE article_comments SET content = $1 WHERE id = $2 RETURNING *
     `
-    const { data: patchedRows, error } = await executeQuery(updateSql, [data.content, data.id])
-    if (error) throw error
-    const updated = patchedRows[0]
+    const { data: updated, error } = await supabaseAdmin
+      .from('article_comments')
+      .update({ content: data.content })
+      .eq('id', data.id)
+      .select()
+      .single();
+    if (error) throw error;
     return NextResponse.json(
       { comment: updated },
       { headers: corsHeaders() }
-    )
+    );
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Erreur serveur' },

@@ -37,6 +37,9 @@ interface AppState {
   // Comment Permissions
   canComment: boolean;
   setCanComment: (canComment: boolean) => void;
+
+  // Logout
+  logout: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -84,7 +87,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   // Comment Permissions
   canComment: false,
-  setCanComment: (canComment) => set({ canComment })
+  setCanComment: (canComment) => set({ canComment }),
+
+  // Logout
+  logout: () => {
+    set({ user: null, isAuthenticated: false, isAdmin: false });
+  }
 }));
 
 // Persist cart to localStorage

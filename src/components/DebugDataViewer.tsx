@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 // Utiliser les fonctions d'API centralisées avec axios
 import { getPrograms, getArticles, getEvents } from '../lib/api';
+import { any } from 'zod';
 
 const DebugDataViewer: React.FC = () => {
   const [programsData, setProgramsData] = useState<any[]>([]);
@@ -16,17 +17,17 @@ const DebugDataViewer: React.FC = () => {
       // Récupération des programmes
       const programsResult = await getPrograms();
       console.log('DEBUG - Programmes récupérés:', programsResult);
-      setProgramsData(programsResult.data || []);
+      setProgramsData(Array.isArray(programsResult) ? programsResult : []);
       
       // Récupération des articles
       const articlesResult = await getArticles();
       console.log('DEBUG - Articles récupérés:', articlesResult);
-      setArticlesData(articlesResult.data || []);
+      setArticlesData(Array.isArray(articlesResult) ? articlesResult : []);
       
       // Récupération des événements
       const eventsResult = await getEvents();
       console.log('DEBUG - Événements récupérés:', eventsResult);
-      setEventsData(eventsResult.data || []);
+      setEventsData(Array.isArray(eventsResult) ? eventsResult : []);
     } catch (err) {
       console.error('Erreur lors du chargement des données de debug:', err);
     } finally {

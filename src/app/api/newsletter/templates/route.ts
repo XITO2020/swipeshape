@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
-import { executeQuery } from "../../../../lib/db";
+import { supabaseAdmin } from "@/lib/supabase";
 import { corsHeaders } from "../../../../lib/api-middleware-app";
 
 function enforceAuth(req: NextRequest, needsAdmin = false) {
@@ -27,10 +27,9 @@ export async function GET(req: NextRequest) {
   if (forbidden) return forbidden;
 
   try {
-    const { data: templates, error } = await executeQuery(
-      'SELECT * FROM newsletter_templates;',
-      []
-    );
+    const { data: templates, error } = await supabaseAdmin
+      .from('newsletter_templates')
+      .select('*');
     if (error) throw error;
     return NextResponse.json({ templates }, { headers: corsHeaders() });
   } catch (err: any) {

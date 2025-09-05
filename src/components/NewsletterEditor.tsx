@@ -8,14 +8,7 @@ const ReactQuill = dynamic(() => import('react-quill'), {
   loading: () => <p>Loading Editor...</p>
 });
 
-// Import the CSS only on the client side
-const QuillCSS = () => {
-  useEffect(() => {
-    // This code only runs on the client
-    import('react-quill/dist/quill.snow.css');
-  }, []);
-  return null;
-};
+
 
 interface NewsletterEditorProps {
   onClose: () => void;
@@ -84,8 +77,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({ onClose }) => {
 
   return (
     <>
-      <QuillCSS />
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">Créer une Newsletter</h2>

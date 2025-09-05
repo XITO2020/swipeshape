@@ -1,5 +1,5 @@
 // src/lib/db-utils.ts
-import { executeQuery } from '../pages/api/db';
+import { executeQuery } from '../app/api/db';
 
 /**
  * Vérifie si un utilisateur a le droit de commenter en fonction de ses achats.

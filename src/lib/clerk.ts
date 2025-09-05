@@ -33,7 +33,7 @@ export async function syncClerkUserToDatabase(clerkUserId: string, userData?: Re
     email: clerkUser.emailAddresses[0]?.emailAddress,
     firstName: clerkUser.firstName,
     lastName: clerkUser.lastName,
-    profileImageUrl: clerkUser.profileImageUrl,
+    profileImageUrl: clerkUser.imageUrl,
     // Identifiez la méthode d'authentification
     authProvider: getAuthProvider(clerkUser),
     ...userData

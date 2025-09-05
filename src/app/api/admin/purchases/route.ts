@@ -1,28 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
-import prisma from '../../../../lib/prisma';
-import { corsHeaders } from '../../../../lib/api-middleware-app';
+import { NextRequest, NextResponse } from 'next/server'
+import { withAdmin } from '@/lib/admin-middleware-app'
+import { supabaseAdmin } from '@/lib/supabase'
+import { corsHeaders } from '@/lib/api-middleware-app'
 
-function enforceAdmin(req: NextRequest) {
-  const { userId, sessionClaims } = getAuth(req);
-  if (!userId || sessionClaims?.role !== 'admin') {
-    return NextResponse.json({ error: 'Accès réservé aux administrateurs' }, { status: 403, headers: corsHeaders() });
-  }
-  return null;
-}
-
-export async function GET(req: NextRequest) {
-  const adminCheck = enforceAdmin(req);
-  if (adminCheck) return adminCheck;
-
+export const GET = withAdmin(async (req: NextRequest) => {
   try {
-    const purchases = await prisma.purchase.findMany({
-      include: { program: true, user: { select: { email: true, id: true } } },
-      orderBy: { createdAt: 'desc' }
-    });
-    return NextResponse.json({ purchases }, { headers: corsHeaders() });
+    const { data, error } = await supabaseAdmin
+      .from('purchases')
+      .select(`
+        id,
+        userId,
+        programId,
+        createdAt,
+        updatedAt,
+        program:programId(id, name, price),
+        user:userId(id, email)
+      `)
+      .order('createdAt', { ascending: false })
+
+    if (error) throw error
+
+    return NextResponse.json(
+      { purchases: data },
+      { status: 200, headers: corsHeaders() }
+    )
   } catch (err: any) {
-    console.error('Erreur GET purchases:', err);
-    return NextResponse.json({ error: 'Impossible de récupérer les achats' }, { status: 500, headers: corsHeaders() });
+    console.error('GET /purchases error:', err)
+    return NextResponse.json(
+      { error: 'Impossible de récupérer les achats' },
+      { status: 500, headers: corsHeaders() }
+    )
   }
-}
+})

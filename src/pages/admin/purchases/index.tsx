@@ -26,7 +26,7 @@ const AdminPurchases: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const { user } = useAppStore();
+  const { user, isAdmin } = useAppStore();
   const router = useRouter();
 
   // Fonction pour récupérer tous les achats
@@ -69,7 +69,7 @@ const AdminPurchases: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!user || !user.isAdmin) {
+    if (!user || !isAdmin) {
       router.push('/login?redirect=/admin/purchases');
       return;
     }

@@ -1,4 +1,4 @@
-import { prisma } from './prisma';
+// Analytics logic needs migration to Supabase. Prisma is disabled.
 
 export const logEvent = async ({
   userId,
@@ -9,11 +9,5 @@ export const logEvent = async ({
   type: 'purchase' | 'view' | 'download';
   details?: string;
 }) => {
-  await prisma.event.create({
-    data: {
-      userId,
-      type,
-      details,
-    },
-  });
+  // All Prisma logic removed. Migration to Supabase pending.
 };

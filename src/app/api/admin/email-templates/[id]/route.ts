@@ -1,52 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
-import prisma from '../../../../../lib/prisma';
-import { corsHeaders } from '../../../../../lib/api-middleware-app';
+// src/app/api/admin/email-templates/[id]/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { withAdmin } from '@/lib/admin-middleware-app'
+import { supabaseAdmin } from '@/lib/supabase'
+import { corsHeaders } from '@/lib/api-middleware-app'
 
-function enforceAdmin(req: NextRequest) {
-  const { userId, sessionClaims } = getAuth(req);
-  if (!userId || sessionClaims?.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Accès réservé aux administrateurs' },
-      { status: 403, headers: corsHeaders() }
-    );
-  }
-  return null;
-}
-
-export async function DELETE(
+/**
+ * DELETE: supprimer un template par son id
+ */
+export const DELETE = withAdmin(async (
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const resolvedParams = await params;
-  const { id } = resolvedParams;
-  const adminCheck = enforceAdmin(req);
-  if (adminCheck) return adminCheck;
-
+  { params }: { params: { id: string } }
+) => {
+  const { id } = params
   if (!id) {
     return NextResponse.json(
       { error: 'ID requis' },
       { status: 400, headers: corsHeaders() }
-    );
+    )
   }
+
   try {
-    const existing = await prisma.emailTemplate.findUnique({ where: { id } });
-    if (!existing) {
+    const { error } = await supabaseAdmin
+      .from('EmailTemplate')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
       return NextResponse.json(
-        { error: 'Template non trouvé' },
-        { status: 404, headers: corsHeaders() }
-      );
+        { error: 'Erreur lors de la suppression du template', details: error.message },
+        { status: 500, headers: corsHeaders() }
+      )
     }
-    await prisma.emailTemplate.delete({ where: { id } });
+
     return NextResponse.json(
       { success: true },
-      { headers: corsHeaders() }
-    );
+      { status: 200, headers: corsHeaders() }
+    )
   } catch (err: any) {
-    console.error('Erreur DELETE template:', err);
+    console.error('DELETE /email-templates/[id] error:', err)
     return NextResponse.json(
       { error: 'Impossible de supprimer le template' },
       { status: 500, headers: corsHeaders() }
-    );
+    )
   }
-}
+})

@@ -1,94 +1,67 @@
-import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
-import { prisma } from "../../../../lib/prisma";
-import { cookies, headers } from "next/headers";
-import { withApiMiddleware, handleApiError } from "../../../../lib/api-middleware-app";
+// src/app/api/user/purchases/route.ts
+import { NextResponse, type NextRequest } from 'next/server'
+import { getAuth } from '@clerk/nextjs/server'
+import { supabaseAdmin } from '@/lib/supabase'
+import { corsHeaders } from '@/lib/api-middleware-app'
 
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-type PurchaseWithProgram = {
-  id: string;
-  programId: string;
-  userEmail: string;
-  createdAt: Date;
-  program: {
-    id: string;
-    name: string;
-    price: number;
-    description: string;
-  };
-};
-
-export async function GET(request: Request) {
-  try {
-    // Récupérer le token depuis l'en-tête Authorization ou les cookies
-    const authHeader = headers().get('authorization');
-    const token = authHeader?.startsWith('Bearer ') 
-      ? authHeader.substring(7) 
-      : cookies().get('token')?.value;
-    
-    if (!token) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-    
-    // Vérifier le token JWT
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
-      
-      // Récupérer les achats de l'utilisateur
-      const purchases = await prisma.purchase.findMany({
-        where: { 
-          userEmail: {
-            equals: decoded.userId
-          }
-        },
-        include: {
-          program: {
-            select: {
-              id: true,
-              name: true,
-              price: true,
-              description: true
-            }
-          }
-        }
-      });
-      
-      return withApiMiddleware(NextResponse.json({ 
-        purchases: purchases.map((purchase: PurchaseWithProgram) => ({
-          id: purchase.id,
-          programId: purchase.programId,
-          purchaseDate: purchase.createdAt,
-          program: purchase.program
-        }))
-      }));
-    } catch (error) {
-      console.error("Error fetching purchases:", error);
-      return NextResponse.json({ error: "Token invalide ou erreur de serveur" }, { status: 401 });
-    }
-  } catch (error) {
-    return handleApiError("Erreur lors de la récupération des achats", 500);
+export async function GET(req: NextRequest) {
+  // 1️⃣ Récupérer l'utilisateur via Clerk
+  const { userId } = getAuth(req)
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'Non authentifié' },
+      { status: 401, headers: corsHeaders() }
+    )
   }
+
+  // 2️⃣ Récupérer les achats pour cet utilisateur
+  const { data, error } = await supabaseAdmin
+    .from('purchases')
+    .select(`
+      id,
+      programId,
+      userEmail,
+      createdAt,
+      program ( id, name, price, description )
+    `)
+    // → adaptez ici si votre colonne est 'userId' ou 'userEmail'
+    .eq('userEmail', userId)
+    .order('createdAt', { ascending: false })
+
+  if (error) {
+    console.error('Erreur Supabase récup achats :', error)
+    return NextResponse.json(
+      { error: 'Impossible de charger vos achats' },
+      { status: 500, headers: corsHeaders() }
+    )
+  }
+
+  // 3️⃣ Formater et renvoyer
+  const purchases = (data || []).map((p: any) => ({
+    id:        p.id,
+    programId: p.programId,
+    userEmail: p.userEmail,
+    createdAt: p.createdAt,
+    program:   p.program,
+  }))
+
+  return NextResponse.json(
+    { purchases },
+    { status: 200, headers: corsHeaders() }
+  )
 }
 
-// Gestion des requêtes OPTIONS (CORS)
 export async function OPTIONS() {
-  return withApiMiddleware(NextResponse.json({}, { status: 200 }));
+  return NextResponse.json({}, { status: 200, headers: corsHeaders() })
 }
 
-// Gestion des autres méthodes HTTP
-export async function POST() {
-  return withApiMiddleware(NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 }));
-}
+const handleMethodNotAllowed = (req: NextRequest) =>
+  NextResponse.json(
+    { error: 'Méthode non autorisée' },
+    { status: 405, headers: corsHeaders() }
+  )
 
-export async function PUT() {
-  return withApiMiddleware(NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 }));
-}
-
-export async function DELETE() {
-  return withApiMiddleware(NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 }));
-}
-
-export async function PATCH() {
-  return withApiMiddleware(NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 }));
-}
+export const POST   = handleMethodNotAllowed
+export const PUT    = handleMethodNotAllowed
+export const DELETE = handleMethodNotAllowed
+export const PATCH  = handleMethodNotAllowed
