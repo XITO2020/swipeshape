@@ -4,6 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 export function middleware(request: NextRequest): NextResponse {
   const url = request.nextUrl.clone();
 
+  // Vérifiez si c'est une requête de préchargement
+  if (request.nextUrl.pathname.startsWith('/_next/data/') || request.nextUrl.pathname.startsWith('/_next/static/')) {
+    return NextResponse.next();
+  }
+
   // En dev ou localhost, on ne force pas HTTPS
   if (
     process.env.NODE_ENV === "development" ||

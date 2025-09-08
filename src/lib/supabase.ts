@@ -1,17 +1,68 @@
 import { createClient } from '@supabase/supabase-js';
 import { Program, Article, Comment, Event, User, Video, Test, TestQuestion, UserTestResult } from '@/types';
 import { mockArticles, mockEvents, mockPrograms, mockUsers, mockVideos, mockTests, mockTestQuestions, mockUserTestResults } from '../lib/mockData';
-export const URL   = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-export const ANON  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-export const ADMIN = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
-// Créer le client Supabase avec la configuration recommandée par Supabase
-export const supabase      = createClient(URL, ANON)
-export const supabaseAdmin = createClient(URL, ADMIN)
+// Environment variable validation
+const getEnvVar = (key: string, isPublic = false): string => {
+  const prefix = isPublic ? 'NEXT_PUBLIC_' : '';
+  const value = process.env[`${prefix}${key}`];
+  
+  if (!value) {
+    const envType = isPublic ? 'public' : 'server';
+    console.error(`Missing ${envType} environment variable: ${prefix}${key}`);
+    return '';
+  }
+  
+  return value;
+};
+
+// Initialize Supabase clients
+const SUPABASE_URL = getEnvVar('SUPABASE_URL', true);  // Le préfixe NEXT_PUBLIC_ est déjà ajouté par getEnvVar
+const SUPABASE_ANON_KEY = getEnvVar('SUPABASE_ANON_KEY', true);  // Le préfixe NEXT_PUBLIC_ est déjà ajouté par getEnvVar
+const SUPABASE_SERVICE_ROLE_KEY = getEnvVar('SUPABASE_SERVICE_ROLE_KEY', false);
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('Missing required Supabase configuration. Please check your environment variables.');
+}
+
+// Create the public Supabase client
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
+
+// Create a function to get the admin client that can be used in API routes
+let _supabaseAdmin: ReturnType<typeof createClient> | null = null;
+
+export const getSupabaseAdmin = () => {
+  if (typeof window !== 'undefined') {
+    throw new Error('Admin client should only be used on the server side');
+  }
+  
+  if (!_supabaseAdmin) {
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for admin operations');
+    }
+    
+    _supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+  }
+  
+  return _supabaseAdmin;
+};
+
+// Log initialization
+console.log('Supabase client initialized with URL:', SUPABASE_URL ? `${SUPABASE_URL.split('//')[0]}//...` : 'Not configured');
 
 // Flag to control whether to use mock data
 const USE_MOCK_DATA = false;
-
 
 
 
