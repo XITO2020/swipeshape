@@ -1,117 +1,83 @@
-import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { withAdminAuthApp } from "../../../../lib/admin-middleware-app";
-import { withApiMiddleware, handleApiError } from "../../../../lib/api-middleware-app";
+// src/app/api/admin/articles/route.ts
+import { z } from 'zod'
+import { NextRequest, NextResponse } from 'next/server'
+import { getAuth } from '@clerk/nextjs/server'        // nécessaire pour requireAdminAuth
+import { executeQuery } from '@/lib/db'
+import { corsHeaders } from '@/lib/api-middleware-app'
+import { requireAdminAuth } from '@/lib/admin-middleware-app'
 
-// Handler pour les requêtes GET
-export async function GET(request: Request) {
-  return withAdminAuthApp(request, async (req: Request, adminId: string) => {
-    try {
-      const { searchParams } = new URL(request.url);
-      const slug = searchParams.get('slug');
-      
-      if (slug) {
-        // Récupérer un article spécifique
-        const article = await prisma.article.findUnique({
-          where: { slug },
-        });
-        
-        if (!article) {
-          return NextResponse.json({ error: "Article non trouvé" }, { status: 404 });
-        }
-        
-        return withApiMiddleware(NextResponse.json(article));
-      } else {
-        // Récupérer tous les articles
-        const articles = await prisma.article.findMany({
-          orderBy: { createdAt: "desc" },
-        });
-        
-        return withApiMiddleware(NextResponse.json(articles));
-      }
-    } catch (error: any) {
-      console.error("Error in admin/articles API GET:", error);
-      return handleApiError("Erreur serveur", 500);
-    }
-  });
+// Schéma Zod
+const articleSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  slug: z.string().regex(/^[a-z0-9-]+$/),
+  category: z.string().optional(),
+  featured: z.boolean().optional(),
+})
+
+export async function GET(req: NextRequest) {
+  // 🔒 Protection admin
+  const authError = requireAdminAuth(req)
+  if (authError) return authError
+
+  // logique métier
+  const { data, error } = await executeQuery(
+    'SELECT id, title, slug, category, featured, created_at FROM articles ORDER BY created_at DESC',
+    []
+  )
+  if (error) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500, headers: corsHeaders() }
+    )
+  }
+  return NextResponse.json(
+    { articles: data },
+    { headers: corsHeaders() }
+  )
 }
 
-// Handler pour les requêtes POST
-export async function POST(request: Request) {
-  return withAdminAuthApp(request, async (req: Request, adminId: string) => {
-    try {
-      const body = await req.json();
-      
-      // Créer un nouvel article
-      const newArticle = await prisma.article.create({
-        data: {
-          title: body.title,
-          content: body.content,
-          slug: body.slug,
-          excerpt: body.excerpt || "",
-          published: body.published || false,
-          authorId: body.authorId,
-        },
-      });
-      
-      return withApiMiddleware(NextResponse.json(newArticle, { status: 201 }));
-    } catch (error: any) {
-      console.error("Error in admin/articles API POST:", error);
-      return handleApiError("Erreur serveur", 500);
-    }
-  });
-}
+export async function POST(req: NextRequest) {
+  // 🔒 Protection admin
+  const authError = requireAdminAuth(req)
+  if (authError) return authError
 
-// Handler pour les requêtes PUT
-export async function PUT(request: Request) {
-  return withAdminAuthApp(request, async (req: Request, adminId: string) => {
-    try {
-      const body = await req.json();
-      
-      // Mettre à jour un article
-      const updatedArticle = await prisma.article.update({
-        where: { slug: body.slug },
-        data: {
-          title: body.title,
-          content: body.content,
-          excerpt: body.excerpt,
-          published: body.published,
-        },
-      });
-      
-      return withApiMiddleware(NextResponse.json(updatedArticle));
-    } catch (error: any) {
-      console.error("Error in admin/articles API PUT:", error);
-      return handleApiError("Erreur serveur", 500);
-    }
-  });
-}
+  // validation JSON
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json(
+      { error: 'Requête JSON invalide' },
+      { status: 400, headers: corsHeaders() }
+    )
+  }
 
-// Handler pour les requêtes DELETE
-export async function DELETE(request: Request) {
-  return withAdminAuthApp(request, async (req: Request, adminId: string) => {
-    try {
-      const { searchParams } = new URL(request.url);
-      const slug = searchParams.get('slug');
-      
-      if (!slug) {
-        return NextResponse.json({ error: "Slug requis" }, { status: 400 });
-      }
-      
-      // Supprimer un article
-      const deletedArticle = await prisma.article.delete({
-        where: { slug },
-      });
-      
-      return withApiMiddleware(NextResponse.json({ success: true, article: deletedArticle }));
-    } catch (error: any) {
-      console.error("Error in admin/articles API DELETE:", error);
-      return handleApiError("Erreur serveur", 500);
-    }
-  });
-}
+  // validation Zod
+  const parsed = articleSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.format() },
+      { status: 422, headers: corsHeaders() }
+    )
+  }
 
-// Handler pour les requêtes OPTIONS (CORS)
-export async function OPTIONS() {
-  return withApiMiddleware(NextResponse.json({}, { status: 200 }));
+  // insertion en base
+  try {
+    const { title, content, slug, category, featured = false } = parsed.data
+    const { data, error } = await executeQuery(
+      'INSERT INTO articles (title, content, slug, category, featured) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [title, content, slug, category, featured]
+    )
+    if (error) throw error
+    return NextResponse.json(
+      { article: data[0] },
+      { status: 201, headers: corsHeaders() }
+    )
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message },
+      { status: 500, headers: corsHeaders() }
+    )
+  }
 }

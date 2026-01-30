@@ -16,7 +16,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin Dash
 
   // Vérifier si l'utilisateur est connecté et est admin
   React.useEffect(() => {
-    if (!user || !user.isAdmin) {
+    if (!user || user.role !== 'admin') {
       router.push('/login?redirect=' + router.asPath);
     }
   }, [user, router]);
@@ -42,7 +42,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin Dash
     return router.pathname.startsWith(href);
   };
 
-  if (!user || !user.isAdmin) {
+  if (!user || user.role !== 'admin') {
     return null; // Ne rien afficher pendant la vérification ou la redirection
   }
 

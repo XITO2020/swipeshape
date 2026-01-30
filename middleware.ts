@@ -1,12 +1,70 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+// middleware.ts — robust Clerk v5+ middleware without TS errors
+import { getAuth } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default clerkMiddleware();
+const PUBLIC_PATHS: string[] = [
+  "/",
+  "/about",
+  "/contact",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/blog",
+  "/programs",
+  "/api/public",
+  "/api/webhooks",
+  "/api/auth/jwt",
+];
 
+export default function middleware(req: NextRequest) {
+  const { userId, sessionClaims } = getAuth(req);
+  const { pathname } = req.nextUrl;
+
+  // 1️⃣ Allow all public paths through
+  if (PUBLIC_PATHS.some(path => pathname.startsWith(path))) {
+    return NextResponse.next();
+  }
+
+  // 2️⃣ Redirect unauthenticated users to /login
+  if (!userId) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // 3️⃣ Protect /admin and /api/admin by role claim
+  if ((pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) 
+      && sessionClaims?.role !== "admin") {
+    return NextResponse.json(
+      { error: "Accès réservé aux administrateurs" },
+      { status: 403 }
+    );
+  }
+
+  // 4️⃣ Prevent signed‑in users from hitting /login again
+  if (pathname === "/login") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  // 5️⃣ All other authenticated requests pass
+  return NextResponse.next();
+}
+
+// Apply to everything except Next.js static assets
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
-    '/(api|trpc)(.*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next
+     * - static
+     * - favicon.ico
+     * - api (except webhook paths)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/api/webhooks/stripe',
   ],
 };

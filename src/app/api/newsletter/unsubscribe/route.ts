@@ -1,38 +1,37 @@
 // src/app/api/newsletter/unsubscribe/route.ts
-import { NextResponse } from "next/server";
-import { withApiMiddleware, handleApiError } from "@/lib/api-middleware-app";
-import { unsubscribe } from "@/services/newsletter.service";
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { unsubscribeSubscriber } from '@/services/newsletter.service';
 
-// Méthode pour désabonner un utilisateur de la newsletter
-export async function GET(request: Request) {
+const unsubscribeSchema = z.object({
+  email: z.string().email(),
+});
+
+export async function POST(req: NextRequest) {
+  // 1. Valider et extraire la payload
+  let payload: z.infer<typeof unsubscribeSchema>;
   try {
-    const { searchParams } = new URL(request.url);
-    const email = searchParams.get('email');
-    
-    if (!email) {
-      return NextResponse.json(
-        { error: "Email requis" }, 
-        { status: 400 }
-      );
-    }
-    
-    // Désabonner l'email via notre service newsletter
-    const success = await unsubscribe(email);
-    
-    if (!success) {
-      return handleApiError("Erreur lors du désabonnement", 500);
-    }
-    
-    // Rediriger vers une page de confirmation ou retourner un succès en JSON
-    if (searchParams.get('redirect') === 'true') {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe-success`);
-    }
-    
-    return withApiMiddleware(
-      NextResponse.json({ success: true, message: "Désabonnement réussi" })
+    const body = await req.json();
+    payload = unsubscribeSchema.parse(body);
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: 'Requête invalide', details: err.message },
+      { status: 400 }
     );
-  } catch (error: any) {
-    console.error("Erreur lors du désabonnement:", error);
-    return handleApiError(error.message, 500);
   }
+
+  // 2. Désinscrire
+  const { success, error } = await unsubscribeSubscriber(payload.email);
+  if (!success) {
+    return NextResponse.json(
+      { error: error || 'Échec du désabonnement' },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ success: true }, { status: 200 });
+}
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { status: 204 });
 }

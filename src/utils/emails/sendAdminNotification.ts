@@ -1,35 +1,31 @@
-import formData from "form-data";
-import Mailgun from "mailgun.js";
+// src/utils/emails/sendAdminNotification.ts
+import createTransport from 'nodemailer';
 
-const mailgun = new Mailgun(formData);
-
-const mgClient = mailgun.client({
-  username: "api",
-  key: process.env.MAILGUN_API_KEY || "",
-  url: "https://api.mailgun.net",
+const transporter = createTransport({
+  host:   process.env.SMTP_HOST,
+  port:   parseInt(process.env.SMTP_PORT || '587', 10),
+  secure: process.env.SMTP_SECURE === 'true', // true = TLS
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
 });
 
 /**
- * Envoie une notification par email aux admins lors d'un nouvel achat
- *
- * @param adminEmails - Liste des emails admins
- * @param buyerEmail - Email de l'acheteur
- * @param programName - Nom du programme acheté
+ * Envoie une notification email aux admins à chaque nouvel achat.
  */
 export async function sendAdminNotification(
   adminEmails: string[],
   buyerEmail: string,
   programName: string
-) {
-  const domain = process.env.MAILGUN_DOMAIN || "";
+): Promise<void> {
+  const fromDomain = process.env.SMTP_FROM_DOMAIN || process.env.SMTP_HOST;
 
-  const messageData = {
-    from: `Swipeshape <no-reply@${domain}>`,
-    to: adminEmails,
+  await transporter.sendMail({
+    from:    `Swipeshape <no-reply@${fromDomain}>`,
+    to:      adminEmails.join(','),
     subject: `Nouveau programme acheté : ${programName}`,
-    text: `Un nouvel achat vient d'être effectué par ${buyerEmail} pour le programme "${programName}".`,
-    html: `<p>Un nouvel achat vient d'être effectué par <strong>${buyerEmail}</strong> pour le programme "<em>${programName}</em>".</p>`,
-  };
-
-  return mgClient.messages.create(domain, messageData);
+    text:    `Un nouvel achat a été effectué par ${buyerEmail} pour le programme "${programName}".`,
+    html:    `<p>Un nouvel achat a été effectué par <strong>${buyerEmail}</strong> pour le programme "<em>${programName}</em>".</p>`,
+  });
 }

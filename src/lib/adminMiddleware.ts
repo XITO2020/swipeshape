@@ -1,58 +1,46 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import jwt from "jsonwebtoken";
+// src/lib/adminMiddleware.ts
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+import type { NextApiRequest, NextApiResponse } from 'next'
+import { getAuth } from '@clerk/nextjs/server'
 
-// Middleware to verify admin access - extract as utility function
-export const verifyAdminToken = (req: NextApiRequest): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    // Get token from Authorization header or cookie
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ') 
-      ? authHeader.substring(7) 
-      : req.cookies.token;
-    
-    if (!token) {
-      reject("Non authentifié");
-      return;
-    }
-    
-    // Verify JWT token
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string; role: string };
-      
-      // Check if user is admin
-      if (decoded.role !== "ADMIN") {
-        reject("Non autorisé - Accès administrateur requis");
-        return;
-      }
-      
-      resolve(decoded.userId);
-    } catch (error) {
-      reject("Token invalide ou expiré");
-    }
-  });
-};
+/**
+ * HOF pour protéger une Next.js API Route (Pages Router) :
+ * Higher Order Function
+ * - Vérifie que l’utilisateur est authentifié via Clerk.
+ * - Vérifie que sessionClaims.role === "admin".
+ * - Si non, renvoie 401 ou 403.
+ * - Sinon, appelle le handler.
+ *
+ * Usage (dans un fichier sous /pages/api) :
+ *
+ *   import type { NextApiRequest, NextApiResponse } from 'next'
+ *   import { withAdminAuth } from '@/lib/adminMiddleware'
+ *
+ *   async function handler(req: NextApiRequest, res: NextApiResponse) {
+ *     // ... votre logique admin ...
+ *     res.status(200).json({ ok: true })
+ *   }
+ *
+ *   export default withAdminAuth(handler)
+ */
+export function withAdminAuth(
+  handler: (req: NextApiRequest, res: NextApiResponse) => any | Promise<any>
+) {
+  return async (req: NextApiRequest, res: NextApiResponse) => {
+    // Récupération de l’authentification Clerk
+    const { userId, sessionClaims } = getAuth(req)
 
-// Middleware wrapper for API handlers
-export const withAdminAuth = (
-  handler: (req: NextApiRequest, res: NextApiResponse, adminId: string) => Promise<void | NextApiResponse<any>>
-) => {
-  return async (req: NextApiRequest, res: NextApiResponse): Promise<void | NextApiResponse<any>> => {
-    try {
-      const adminId = await verifyAdminToken(req);
-      return handler(req, res, adminId);
-    } catch (error: any) {
-      if (error === "Non authentifié") {
-        return res.status(401).json({ error: "Non authentifié" });
-      } else if (error === "Non autorisé - Accès administrateur requis") {
-        return res.status(403).json({ error: "Non autorisé - Accès administrateur requis" });
-      } else if (error === "Token invalide ou expiré") {
-        return res.status(401).json({ error: "Token invalide ou expiré" });
-      }
-      
-      console.error("Error in admin middleware:", error);
-      return res.status(500).json({ error: "Erreur serveur" });
+    // 1) Non authentifié
+    if (!userId) {
+      return res.status(401).json({ error: 'Non authentifié' })
     }
-  };
-};
+
+    // 2) Pas admin
+    if (sessionClaims?.role !== 'admin') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs' })
+    }
+
+    // 3) Tout est OK, on exécute le handler
+    return handler(req, res)
+  }
+}

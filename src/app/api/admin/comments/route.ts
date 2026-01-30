@@ -1,111 +1,85 @@
-import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { withAdminAuthApp } from "../../../../lib/admin-middleware-app";
+// src/app/api/admin/comments/route.ts
+import { z } from 'zod'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireAdminAuth } from '@/lib/admin-middleware-app'
+import { supabaseAdmin } from '@/lib/supabase'
+import { corsHeaders } from '@/lib/api-middleware-app'
 
-/**
- * Gestion des requêtes GET pour obtenir des commentaires (tous ou un seul)
- */
-export const GET = withAdminAuthApp(async (request: Request) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const commentId = searchParams.get("id");
-    const articleId = searchParams.get("articleId");
-    
-    if (commentId) {
-      // Get single comment
-      const comment = await prisma.comment.findUnique({
-        where: { id: commentId },
-        include: { user: { select: { name: true, email: true } } }
-      });
-      
-      if (!comment) {
-        return NextResponse.json({ error: "Commentaire non trouvé" }, { status: 404 });
-      }
-      
-      return NextResponse.json(comment);
-    } else {
-      // Get all comments with filters
-      const whereClause = articleId ? { articleId } : {};
-      
-      const comments = await prisma.comment.findMany({
-        where: whereClause,
-        orderBy: { createdAt: "desc" },
-        include: { user: { select: { name: true, email: true } } }
-      });
-      
-      return NextResponse.json(comments);
-    }
-  } catch (error: any) {
-    console.error("Error in admin/comments API (GET):", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+// Schéma Zod pour la validation des commentaires
+const commentSchema = z.object({
+  articleId: z.string().uuid(),
+  content:   z.string().min(1),
+  rating:    z.number().min(1).max(5),
+})
+
+export async function GET(req: NextRequest) {
+  // 🔒 Protection admin
+  const authError = requireAdminAuth(req)
+  if (authError) return authError
+
+  // Récupération de tous les commentaires
+  const { data: comments, error } = await supabaseAdmin
+    .from('article_comments')
+    .select('id, article_id, content, rating, created_at')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500, headers: corsHeaders() }
+    )
   }
-});
 
-/**
- * Gestion des requêtes PUT pour mettre à jour un commentaire
- */
-export const PUT = withAdminAuthApp(async (request: Request) => {
-  try {
-    const body = await request.json();
-    
-    if (!body.id) {
-      return NextResponse.json({ error: "ID du commentaire requis" }, { status: 400 });
-    }
-    
-    // Update comment (e.g., for moderation)
-    const updatedComment = await prisma.comment.update({
-      where: { id: body.id },
-      data: {
-        approved: body.approved,
-        content: body.content
-      },
-    });
-    
-    return NextResponse.json(updatedComment);
-  } catch (error: any) {
-    console.error("Error in admin/comments API (PUT):", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
-});
-
-/**
- * Gestion des requêtes DELETE pour supprimer un commentaire
- */
-export const DELETE = withAdminAuthApp(async (request: Request) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const commentId = searchParams.get("id");
-    
-    if (!commentId) {
-      return NextResponse.json({ error: "ID du commentaire requis" }, { status: 400 });
-    }
-    
-    // Delete comment
-    const deletedComment = await prisma.comment.delete({
-      where: { id: commentId },
-    });
-    
-    return NextResponse.json({ success: true, comment: deletedComment });
-  } catch (error: any) {
-    console.error("Error in admin/comments API (DELETE):", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
-});
-
-/**
- * Gestion des requêtes OPTIONS pour CORS
- */
-export async function OPTIONS() {
-  return NextResponse.json({}, { status: 200 });
+  return NextResponse.json(
+    { comments },
+    { headers: corsHeaders() }
+  )
 }
 
-/**
- * Gestion des autres méthodes HTTP non supportées
- */
-export const POST = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
+export async function POST(req: NextRequest) {
+  // 🔒 Protection admin
+  const authError = requireAdminAuth(req)
+  if (authError) return authError
 
-export const PATCH = withAdminAuthApp(async () => {
-  return NextResponse.json({ error: "Méthode non autorisée" }, { status: 405 });
-});
+  // Lecture du corps JSON
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json(
+      { error: 'Requête JSON invalide' },
+      { status: 400, headers: corsHeaders() }
+    )
+  }
+
+  // Validation Zod
+  const parsed = commentSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.format() },
+      { status: 422, headers: corsHeaders() }
+    )
+  }
+
+  // Insertion en base
+  try {
+    const { articleId, content, rating } = parsed.data
+    const { data: comment, error } = await supabaseAdmin
+      .from('article_comments')
+      .insert([{ article_id: articleId, content, rating }])
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return NextResponse.json(
+      { comment },
+      { status: 201, headers: corsHeaders() }
+    )
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message },
+      { status: 500, headers: corsHeaders() }
+    )
+  }
+}

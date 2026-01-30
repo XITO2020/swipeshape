@@ -1,62 +1,51 @@
-import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
-import { cookies, headers } from 'next/headers';
+// src/lib/admin-middleware-app.ts
+import { NextResponse, type NextRequest } from 'next/server'
+import { getAuth } from '@clerk/nextjs/server'
+import { corsHeaders } from './api-middleware-app'
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+/**
+ * Vérifie que l'utilisateur est authentifié et a le rôle "admin".
+ * - Si non authentifié  ⇒ 401
+ * - Si pas admin        ⇒ 403
+ * - Sinon retourne null (on peut continuer).
+ */
+export function requireAdminAuth(req: NextRequest): NextResponse | null {
+  const { userId, sessionClaims } = getAuth(req)
 
-// Fonction pour vérifier le token d'administration
-export const verifyAdminToken = (request: Request): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    try {
-      // Récupérer le token depuis l'en-tête Authorization ou les cookies
-      const authHeader = headers().get('authorization');
-      const token = authHeader?.startsWith('Bearer ') 
-        ? authHeader.substring(7) 
-        : cookies().get('token')?.value;
-      
-      if (!token) {
-        reject("Non authentifié");
-        return;
-      }
-      
-      // Vérifier le token JWT
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string; role: string };
-        
-        // Vérifier si l'utilisateur est administrateur
-        if (decoded.role !== "ADMIN") {
-          reject("Non autorisé - Accès administrateur requis");
-          return;
-        }
-        
-        resolve(decoded.userId);
-      } catch (error) {
-        reject("Token invalide ou expiré");
-      }
-    } catch (error) {
-      reject("Erreur lors de la lecture des entêtes");
-    }
-  });
-};
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'Non authentifié' },
+      { status: 401, headers: corsHeaders() }
+    )
+  }
 
-// Middleware d'authentification admin pour App Router
-export async function withAdminAuthApp(
-  request: Request,
-  handler: (request: Request, adminId: string) => Promise<Response>
-): Promise<Response> {
-  try {
-    const adminId = await verifyAdminToken(request);
-    return handler(request, adminId);
-  } catch (error: any) {
-    if (error === "Non authentifié") {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    } else if (error === "Non autorisé - Accès administrateur requis") {
-      return NextResponse.json({ error: "Non autorisé - Accès administrateur requis" }, { status: 403 });
-    } else if (error === "Token invalide ou expiré") {
-      return NextResponse.json({ error: "Token invalide ou expiré" }, { status: 401 });
-    }
-    
-    console.error("Error in admin middleware:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  if (sessionClaims?.role !== 'admin') {
+    return NextResponse.json(
+      { error: 'Accès réservé aux administrateurs' },
+      { status: 403, headers: corsHeaders() }
+    )
+  }
+
+  return null
+}
+
+/**
+ * HOF pour envelopper un handler (GET, POST, etc.) :
+ * - On appelle d'abord requireAdminAuth
+ * - Si ça renvoie une NextResponse, on la renvoie directement
+ * - Sinon on exécute le handler original
+ *
+ * Usage :
+ *   export const GET = withAdmin(async req => { … })
+ */
+export function withAdmin<
+  Handler extends (req: NextRequest, ...args: any[]) => Promise<NextResponse>
+>(
+  handler: Handler
+): (req: NextRequest, ...rest: Parameters<Handler> extends [any, ...infer R] ? R : []) => Promise<NextResponse> {
+  return async (req, ...rest) => {
+    const authError = requireAdminAuth(req)
+    if (authError) return authError
+    return handler(req, ...rest)
   }
 }

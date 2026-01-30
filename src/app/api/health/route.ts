@@ -1,42 +1,31 @@
-// src/app/api/health/route.ts
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { corsHeaders } from '../../../lib/api-middleware-app';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+);
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    // Test minimal : lire un id de programmes
-    const { data, error } = await supabase
-      .from('programs')
-      .select('id')
-      .limit(1)
-
-    if (error) {
-      console.error('❌ health SQL error:', error)
-      return NextResponse.json(
-        { status: 'error', detail: error.message },
-        { status: 500 }
-      )
-    }
-
+    const { data, error } = await supabase.from('programs').select('id').limit(1);
+    if (error) throw error;
     return NextResponse.json(
       { status: 'ok', dbReachable: true, sample: data },
-      { status: 200 }
-    )
+      { headers: corsHeaders() }
+    );
   } catch (err: any) {
-    console.error('❌ health exception:', err)
+    console.error('health erreur:', err);
     return NextResponse.json(
       { status: 'error', detail: err.message },
-      { status: 500 }
-    )
+      { status: 500, headers: corsHeaders() }
+    );
   }
 }
 
-export const POST   = () => NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 })
-export const PUT    = POST
-export const DELETE = POST
-export const PATCH  = POST
+export const POST = () =>
+  NextResponse.json({ error: 'Méthode non autorisée' }, { status: 405, headers: corsHeaders() });
+export const PUT = POST;
+export const DELETE = POST;
+export const PATCH = POST;

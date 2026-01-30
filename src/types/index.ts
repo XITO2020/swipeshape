@@ -11,6 +11,7 @@ export interface User {
   purchases?: Array<{
     programId: number;
   }>;
+  authProvider?: string;
 }
 
 export interface Program {

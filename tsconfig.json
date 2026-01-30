@@ -34,6 +34,15 @@
       ]
     },
     "incremental": true,
+    "typeRoots": [
+      "src/types",
+      "node_modules/@types",
+      "node_modules/next/types"
+    ],
+    "types": [
+      "next",
+      "node"
+    ],
     "plugins": [
       {
         "name": "next"
@@ -41,11 +50,13 @@
     ]
   },
   "include": [
+    "next-env.d.ts",
     "prisma",
     "src",
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "src/scripts"
   ]
 }

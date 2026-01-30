@@ -13,13 +13,50 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  webpack: (config, { isServer }) => {
+    config.resolve.fallback = { fs: false, path: false };
+    return config;
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
-  webpack(config, { isServer }) {
+  pageExtensions: ['ts', 'tsx'],
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['tailwindcss', 'autoprefixer']
+  },
+  webpack: (config) => {
+    // Support for .module.pure.css files
+    config.module.rules.push({
+      test: /\.module\.pure\.css$/,
+      use: [
+        'style-loader',
+        {
+          loader: 'css-loader',
+          options: {
+            modules: true,
+            importLoaders: 1,
+            localIdentName: '[name]__[local]__[hash:base64:5]'
+          }
+        }
+      ]
+    });
+
+    // Support for .vanilla.css files
+    config.module.rules.push({
+      test: /\.vanilla\.css$/,
+      use: [
+        'style-loader',
+        'css-loader'
+      ]
+    });
+
+    return config;
+  },
+  webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       '@': resolve(__dirname, 'src'),
@@ -35,16 +72,13 @@ const nextConfig = {
       use: 'null-loader',
     });
 
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        path: false,
-        crypto: false,
-        net: false,
-        tls: false,
-      };
-    }
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+      crypto: false,
+      stream: false
+    };
 
     return config;
   },

@@ -1,71 +1,68 @@
-// src/app/api/newsletter/send/route.ts
-import { NextResponse } from "next/server";
-import { sendNewsletter } from "../../../../services/email.service";
-import { withApiMiddleware, handleApiError } from "../../../../lib/api-middleware-app";
-import { requireAuthApp } from "../../../../lib/auth-app";
-import { getSubscribersFromDatabase } from "../../../../services/newsletter.service";
 
-// Méthode pour envoyer une newsletter immédiatement
-export async function POST(request: Request) {
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { withAdmin } from '@/lib/admin-middleware-app';
+import { sendEmail, EmailOptions } from '@/services/email.service';
+import { getSubscribers } from '@/services/newsletter.service';
+import { supabaseAdmin } from '@/lib/supabase';
+
+const payloadSchema = z.object({
+  newsletterId: z.string().uuid(),
+});
+
+export const POST = withAdmin(async (req: NextRequest) => {
+  let payload: { newsletterId: string };
   try {
-    // Vérifier l'authentification et les permissions admin
-    const user = await requireAuthApp(request);
-    if (!user || !user.isAdmin) {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const { subject, content } = body;
-    
-    if (!subject || !content) {
-      return NextResponse.json(
-        { error: "Sujet et contenu requis" }, 
-        { status: 400 }
-      );
-    }
-    
-    // Récupération des abonnés actifs
-    const subscribers = await getSubscribersFromDatabase();
-    
-    if (!subscribers || subscribers.length === 0) {
-      return NextResponse.json(
-        { error: "Aucun abonné actif trouvé" }, 
-        { status: 404 }
-      );
-    }
-    
-    // Format des destinataires pour Nodemailer
-    const recipients = subscribers.map(sub => ({
-      email: sub.email,
-      name: sub.name || undefined
-    }));
-    
-    // Génération d'une version texte à partir du HTML (simplifié)
-    const textContent = content.replace(/<[^>]*>?/gm, '');
-    
-    // Envoi de la newsletter via notre service Nodemailer
-    const emailSent = await sendNewsletter(
-      recipients,
-      subject,
-      content,
-      textContent
+    payload = payloadSchema.parse(await req.json());
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: 'Payload invalide', details: err.message },
+      { status: 400 }
     );
-    
-    if (!emailSent) {
-      return NextResponse.json(
-        { error: "Échec de l'envoi de la newsletter. Vérifiez votre configuration SMTP." }, 
-        { status: 500 }
-      );
-    }
-    
-    return withApiMiddleware(
-      NextResponse.json({ 
-        success: true, 
-        recipientCount: recipients.length 
-      })
-    );
-  } catch (error: any) {
-    console.error("Erreur lors de l'envoi de la newsletter:", error);
-    return handleApiError(error.message, 500);
   }
+
+  const { data: newsletter, error: nlError } = await supabaseAdmin
+    .from('newsletters')
+    .select('id, title, content')
+    .eq('id', payload.newsletterId)
+    .maybeSingle();
+  if (nlError || !newsletter) {
+    return NextResponse.json(
+      { error: 'Newsletter introuvable' },
+      { status: 404 }
+    );
+  }
+
+  const subs = await getSubscribers();
+  if (subs.length === 0) {
+    return NextResponse.json(
+      { error: 'Aucun abonné actif' },
+      { status: 400 }
+    );
+  }
+
+  const subject = newsletter.title;
+  const html = newsletter.content;
+  const text = html.replace(/<[^>]+>/g, '');
+
+  let sentCount = 0;
+  for (const { email } of subs) {
+    const options: EmailOptions = {
+      from: process.env.EMAIL_FROM!,
+      to: email,
+      subject,
+      html,
+      text,
+    };
+    if (await sendEmail(options)) sentCount++;
+  }
+
+  return NextResponse.json(
+    { success: true, sentCount, total: subs.length },
+    { status: 200 }
+  );
+});
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { status: 204 });
 }

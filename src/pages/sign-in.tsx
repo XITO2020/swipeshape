@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { SignIn } from '@clerk/nextjs';
 import SocialAuthButtons from '../components/auth/SocialAuthButtons';
-import styles from '../styles/Auth.module.css';
+
 
 // Tell Next.js to render this page on the client side only
 export const getServerSideProps = () => ({ props: {} });
@@ -43,16 +43,16 @@ export default function SignInPage() {
   };
 
   return (
-    <div className={styles.authContainer}>
-      <div className={styles.authCard}>
-        <h1 className={styles.authTitle}>Connexion</h1>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="bg-white p-8 rounded-lg shadow-md w-96">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Connexion</h1>
 
         {/* Social Login avec Clerk */}
         <SocialAuthButtons mode="signin" />
 
         {/* Formulaire de connexion traditionnel */}
-        <form onSubmit={handleEmailSignIn} className={styles.authForm}>
-          <div className={styles.formGroup}>
+        <form onSubmit={handleEmailSignIn} className="space-y-6">
+          <div className="space-y-2">
             <label htmlFor="email">Email</label>
             <input
               id="email"
@@ -60,11 +60,11 @@ export default function SignInPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className={styles.formInput}
+              className="text-red-500 text-sm"
             />
           </div>
 
-          <div className={styles.formGroup}>
+          <div className="space-y-2">
             <label htmlFor="password">Mot de passe</label>
             <input
               id="password"
@@ -72,25 +72,25 @@ export default function SignInPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className={styles.formInput}
+              className="text-red-500 text-sm"
             />
           </div>
 
-          {error && <div className={styles.formError}>{error}</div>}
+          {error && <div className="text-red-500 text-sm">{error}</div>}
 
           <button 
             type="submit" 
-            className={styles.authButton}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
           >
             {loading ? 'Connexion...' : 'Se connecter'}
           </button>
 
-          <div className={styles.authLinks}>
-            <a href="/forgot-password" className={styles.authLink}>
+          <div className="flex justify-between mt-4">
+            <a href="/forgot-password" className="text-blue-600 hover:text-blue-800 text-sm">
               Mot de passe oublié ?
             </a>
-            <a href="/sign-up" className={styles.authLink}>
+            <a href="/sign-up" className="text-blue-600 hover:text-blue-800 text-sm">
               Pas encore de compte ? S'inscrire
             </a>
           </div>

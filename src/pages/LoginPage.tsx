@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { signIn } from '../lib/supabase';
 import { useAppStore } from '../lib/store';
-import styles from '../styles/Login.module.css'; // Using CSS modules instead
+import '../styles/LoginPage.css';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');

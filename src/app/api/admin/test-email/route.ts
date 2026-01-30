@@ -1,111 +1,122 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { isAdmin } from '../../../../lib/auth-app';
-import { EmailOptions } from '../../../../services/email.service';
-import { sendEmail } from '../../../../services/email.service';
+// src/app/api/admin/test-email/route.ts
+
+import { NextRequest, NextResponse } from 'next/server'
+import { withAdmin } from '@/lib/admin-middleware-app'
+import { sendEmail } from '@/lib/emailClient'
+import { corsHeaders } from '@/lib/api-middleware-app'
 
 /**
- * Envoyer un email de test pour valider la configuration SMTP
+ * POST /api/admin/test-email
+ * Envoie un email de test pour valider la configuration SMTP
  */
-export async function POST(request: NextRequest) {
-  // Vérifier que l'utilisateur est admin
-  if (!(await isAdmin(request))) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-  }
-  
+export const POST = withAdmin(async (req: NextRequest) => {
+  // 1️⃣ Récupération et validation de l'email envoyé
+  let body: unknown
   try {
-    const { email } = await request.json();
-    
-    if (!email || typeof email !== 'string' || !email.includes('@')) {
-      return NextResponse.json(
-        { error: 'Adresse email invalide' },
-        { status: 400 }
-      );
-    }
-    
-    // Contenu de l'email de test
-    const htmlContent = `
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
-            .content { padding: 20px; }
-            .footer { background-color: #f8f9fa; padding: 10px; text-align: center; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>Test de configuration email</h1>
-            </div>
-            <div class="content">
-              <p>Bonjour,</p>
-              <p>Ceci est un email de test envoyé depuis l'interface d'administration de SwipeShape.</p>
-              <p>Si vous recevez cet email, la configuration SMTP est correcte.</p>
-              <p>Informations techniques:</p>
-              <ul>
-                <li>Date: ${new Date().toLocaleString()}</li>
-                <li>Serveur: ${process.env.EMAIL_HOST || 'Non configuré'}</li>
-                <li>Port: ${process.env.EMAIL_PORT || 'Non configuré'}</li>
-                <li>Utilisateur: ${process.env.EMAIL_USER || 'Non configuré'}</li>
-                <li>Sécurité: ${process.env.EMAIL_SECURE === 'true' ? 'TLS/SSL activé' : 'TLS/SSL désactivé'}</li>
-              </ul>
-            </div>
-            <div class="footer">
-              <p>&copy; ${new Date().getFullYear()} SwipeShape, Tous droits réservés.</p>
-            </div>
+    body = await req.json()
+  } catch {
+    return NextResponse.json(
+      { error: 'JSON invalide' },
+      { status: 400, headers: corsHeaders() }
+    )
+  }
+
+  const { email } = typeof body === 'object' && body !== null
+    ? (body as any)
+    : {}
+  if (typeof email !== 'string' || !email.includes('@')) {
+    return NextResponse.json(
+      { error: 'Adresse email invalide' },
+      { status: 400, headers: corsHeaders() }
+    )
+  }
+
+  // 2️⃣ Construction du contenu HTML et texte
+  const now = new Date().toLocaleString('fr-FR')
+  const smtpHost  = process.env.EMAIL_HOST  ?? 'Non configuré'
+  const smtpPort  = process.env.EMAIL_PORT  ?? 'Non configuré'
+  const smtpUser  = process.env.EMAIL_USER  ?? 'Non configuré'
+  const smtpSecure= process.env.EMAIL_SECURE === 'true'
+    ? 'TLS/SSL activé'
+    : 'TLS/SSL désactivé'
+
+  const htmlContent = `
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; }
+          .container { max-width: 600px; margin: auto; padding: 20px; }
+          .header { background: #f8f9fa; padding: 20px; text-align: center; }
+          .content { padding: 20px; }
+          .footer { background: #f8f9fa; padding: 10px; text-align: center; font-size:12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header"><h1>Test de configuration email</h1></div>
+          <div class="content">
+            <p>Bonjour,</p>
+            <p>Ceci est un email de test envoyé depuis l'interface d'administration de SwipeShape.</p>
+            <ul>
+              <li>Date : ${now}</li>
+              <li>Serveur : ${smtpHost}</li>
+              <li>Port : ${smtpPort}</li>
+              <li>Utilisateur : ${smtpUser}</li>
+              <li>Sécurité : ${smtpSecure}</li>
+            </ul>
           </div>
-        </body>
-      </html>
-    `;
-    
-    const textContent = `
-      Test de configuration email
-      
-      Bonjour,
-      
-      Ceci est un email de test envoyé depuis l'interface d'administration de SwipeShape.
-      Si vous recevez cet email, la configuration SMTP est correcte.
-      
-      Informations techniques:
-      - Date: ${new Date().toLocaleString()}
-      - Serveur: ${process.env.EMAIL_HOST || 'Non configuré'}
-      - Port: ${process.env.EMAIL_PORT || 'Non configuré'}
-      - Utilisateur: ${process.env.EMAIL_USER || 'Non configuré'}
-      - Sécurité: ${process.env.EMAIL_SECURE === 'true' ? 'TLS/SSL activé' : 'TLS/SSL désactivé'}
-      
-      © ${new Date().getFullYear()} SwipeShape, Tous droits réservés.
-    `;
-    
-    // Options de l'email
-    const options: EmailOptions = {
-      to: { email },
-      subject: 'Test de configuration email - SwipeShape',
-      html: htmlContent,
-      text: textContent,
-      from: process.env.EMAIL_FROM || 'no-reply@swipeshape.com'
-    };
-    
-    // Envoi de l'email via notre service Nodemailer
-    const success = await sendEmail(options);
-    
-    if (!success) {
-      return NextResponse.json(
-        { error: 'L\'email n\'a pas pu être envoyé, vérifiez les logs du serveur' },
-        { status: 500 }
-      );
-    }
-    
-    return NextResponse.json({ 
+          <div class="footer">&copy; ${new Date().getFullYear()} SwipeShape</div>
+        </div>
+      </body>
+    </html>
+  `
+
+  const textContent = `
+Test de configuration email
+
+Bonjour,
+
+Ceci est un email de test envoyé depuis l'interface d'administration de SwipeShape.
+
+Informations techniques :
+- Date : ${now}
+- Serveur : ${smtpHost}
+- Port : ${smtpPort}
+- Utilisateur : ${smtpUser}
+- Sécurité : ${smtpSecure}
+
+© ${new Date().getFullYear()} SwipeShape
+  `
+
+  // 3️⃣ Envoi via votre emailClient
+  const success = await sendEmail(
+    email,
+    'Test de configuration email - SwipeShape',
+    htmlContent,
+    textContent
+  )
+
+  if (!success) {
+    return NextResponse.json(
+      { error: "L'email n'a pas pu être envoyé, vérifiez la configuration SMTP" },
+      { status: 500, headers: corsHeaders() }
+    )
+  }
+
+  // 4️⃣ Réponse
+  return NextResponse.json(
+    {
       success: true,
       message: `Email de test envoyé à ${email}`
-    });
-  } catch (error) {
-    console.error('Erreur lors de l\'envoi de l\'email de test:', error);
-    return NextResponse.json(
-      { error: 'Impossible d\'envoyer l\'email de test', details: (error as Error).message },
-      { status: 500 }
-    );
-  }
+    },
+    { status: 200, headers: corsHeaders() }
+  )
+})
+
+/**
+ * OPTIONS preflight pour CORS
+ * Gardez-le public (pas besoin d'admin)
+ */
+export async function OPTIONS() {
+  return NextResponse.json({}, { status: 200, headers: corsHeaders() })
 }

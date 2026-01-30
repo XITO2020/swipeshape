@@ -1,88 +1,98 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { isAdmin } from '../../../../lib/auth-app';
-import { prisma } from '../../../../lib/prisma';
+// src/app/api/admin/email-templates/route.ts
+import { z } from 'zod'
+import { NextRequest, NextResponse } from 'next/server'
+import { withAdmin } from '@/lib/admin-middleware-app'
+import { supabaseAdmin } from '@/lib/supabase'
+import { corsHeaders } from '@/lib/api-middleware-app'
+
+// Schéma Zod pour validation des templates email
+const templateSchema = z.object({
+  name:    z.string().min(1),
+  subject: z.string().min(1),
+  content: z.string().min(1),
+  type:    z.string().optional(),
+})
 
 /**
- * Récupérer tous les templates d'email
+ * GET: lister tous les templates
  */
-export async function GET(request: NextRequest) {
-  // Vérifier que l'utilisateur est admin
-  if (!(await isAdmin(request))) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-  }
-
+export const GET = withAdmin(async (req: NextRequest) => {
   try {
-    // Récupérer tous les templates depuis la DB
-    const templates = await prisma.emailTemplate.findMany({
-      orderBy: {
-        name: 'asc'
-      }
-    });
+    const { data, error } = await supabaseAdmin
+      .from('EmailTemplate')
+      .select('*')
+      .order('createdAt', { ascending: false })
 
-    return NextResponse.json(templates);
-  } catch (error) {
-    console.error('Erreur lors de la récupération des templates:', error);
+    if (error) {
+      return NextResponse.json(
+        { error: 'Erreur lors de la récupération des templates', details: error.message },
+        { status: 500, headers: corsHeaders() }
+      )
+    }
+
+    return NextResponse.json(
+      { templates: data },
+      { status: 200, headers: corsHeaders() }
+    )
+  } catch (err: any) {
+    console.error('GET /email-templates error:', err)
     return NextResponse.json(
       { error: 'Impossible de récupérer les templates' },
-      { status: 500 }
-    );
+      { status: 500, headers: corsHeaders() }
+    )
   }
-}
+})
 
 /**
- * Créer ou mettre à jour un template d'email
+ * POST: créer un nouveau template
  */
-export async function POST(request: NextRequest) {
-  // Vérifier que l'utilisateur est admin
-  if (!(await isAdmin(request))) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+export const POST = withAdmin(async (req: NextRequest) => {
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json(
+      { error: 'JSON invalide' },
+      { status: 400, headers: corsHeaders() }
+    )
+  }
+
+  const parsed = templateSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.format() },
+      { status: 422, headers: corsHeaders() }
+    )
   }
 
   try {
-    const data = await request.json();
+    const { name, subject, content, type } = parsed.data
+    const now = new Date().toISOString()
 
-    // Valider les données requises
-    if (!data.name || !data.subject || !data.content) {
+    const { data, error } = await supabaseAdmin
+      .from('EmailTemplate')
+      .insert([
+        { name, subject, body: content, type, createdAt: now, updatedAt: now }
+      ])
+      .select()
+      .single()
+
+    if (error) {
       return NextResponse.json(
-        { error: 'Les champs nom, sujet et contenu sont requis' },
-        { status: 400 }
-      );
+        { error: 'Erreur lors de la création du template', details: error.message },
+        { status: 500, headers: corsHeaders() }
+      )
     }
 
-    let template;
-
-    // Mise à jour ou création selon la présence d'un ID
-    if (data.id) {
-      // Mise à jour
-      template = await prisma.emailTemplate.update({
-        where: {
-          id: data.id
-        },
-        data: {
-          name: data.name,
-          subject: data.subject,
-          content: data.content,
-          type: data.type || 'custom'
-        }
-      });
-    } else {
-      // Création
-      template = await prisma.emailTemplate.create({
-        data: {
-          name: data.name,
-          subject: data.subject,
-          content: data.content,
-          type: data.type || 'custom'
-        }
-      });
-    }
-
-    return NextResponse.json(template);
-  } catch (error) {
-    console.error('Erreur lors de l\'enregistrement du template:', error);
+    return NextResponse.json(
+      { template: data },
+      { status: 201, headers: corsHeaders() }
+    )
+  } catch (err: any) {
+    console.error('POST /email-templates error:', err)
     return NextResponse.json(
       { error: 'Impossible d\'enregistrer le template' },
-      { status: 500 }
-    );
+      { status: 500, headers: corsHeaders() }
+    )
   }
-}
+})

@@ -17,6 +17,7 @@
   src: url('/assets/fonts/agile.ttf') format('ttf'),
 }
 
+body { font-family: sans-serif; }
 /* HeroSlider.css */
 
 /* Cibler les dots */

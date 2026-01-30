@@ -1,5 +1,5 @@
 import React from 'react';
-import Accordion from 'react-bootstrap/Accordion'; // Assurez-vous d'installer react-bootstrap
+import { Accordion } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css'; // Importez le CSS de Bootstrap
 
 const FAQ: React.FC = () => {

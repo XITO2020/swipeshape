@@ -61,3 +61,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+#personnal files
+src/pages/postgres-test.tsx
+src/styles/Home.module.css
+blueprint.txt
+blueprint.zip
+.vercel
